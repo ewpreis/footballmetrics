@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ficha de Jogo — Escanteios &amp; Cartões</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0E1912;
+    --panel: #152A1E;
+    --panel-2: #101F16;
+    --line: #26402F;
+    --text: #EDEAE0;
+    --muted: #8FA396;
+    --gold: #D4A94A;
+    --alert: #C1502E;
+    --cool: #4C8C6B;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--text); font-family:'Inter', sans-serif;
+    min-height:100vh; padding:28px 20px 60px;
+  }
+  .wrap{ max-width:960px; margin:0 auto; }
+
+  header.top{ border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:18px; }
+  .brand{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:20px; letter-spacing:0.02em; }
+  .brand span{ color:var(--gold); }
+
+  .legend{
+    font-size:12px; color:var(--muted); line-height:1.6;
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    padding:12px 16px; margin:18px 0;
+  }
+  .legend b{ color:var(--text); }
+  .legend code{ color:var(--gold); font-family:'IBM Plex Mono', monospace; font-size:11px; }
+
+  .filter-row{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-size:13px; padding:10px 0;
+  }
+  .filter-row.comp-filter{ border-bottom:1px solid var(--line); }
+  .filter-link{
+    color:var(--muted); cursor:pointer; font-weight:500; padding:2px 4px; border-radius:3px;
+  }
+  .filter-link:hover{ color:var(--text); }
+  .filter-link.active{ color:var(--gold); font-weight:600; }
+  .sep{ color:var(--line); }
+
+  .day-nav{ display:flex; align-items:center; gap:10px; padding:4px 8px; border-radius:4px; }
+  .day-nav.active{ background:var(--panel); }
+  .day-nav button{
+    background:none; border:1px solid var(--line); color:var(--text); border-radius:4px;
+    width:26px; height:26px; cursor:pointer; font-size:14px; line-height:1;
+  }
+  .day-nav button:hover{ border-color:var(--gold); color:var(--gold); }
+  #dayLabel{ min-width:110px; text-align:center; font-weight:600; cursor:pointer; color:var(--muted); }
+  .day-nav.active #dayLabel{ color:var(--gold); }
+
+  .section-title{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:13px;
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--gold);
+    display:flex; align-items:center; gap:10px; margin:26px 0 12px;
+  }
+  .section-title::after{ content:''; flex:1; height:1px; background:var(--line); }
+
+  .match-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:16px 18px; margin-bottom:14px;
+  }
+  .match-card.encerrado{ opacity:0.92; }
+  .match-top{ display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .teams{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:17px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .teams .vs{ color:var(--muted); font-weight:500; margin:0 2px; font-size:13px; }
+  .posicao{
+    font-size:10px; color:var(--muted); font-weight:600; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:3px; padding:1px 4px; margin:0 4px;
+    font-family:'IBM Plex Mono', monospace; vertical-align:middle;
+  }
+  .escudo{ width:22px; height:22px; object-fit:contain; vertical-align:middle; flex-shrink:0; }
+  .comp-logo{ width:16px; height:16px; object-fit:contain; vertical-align:middle; margin-right:5px; }
+  .placar{ font-family:'IBM Plex Mono', monospace; color:var(--gold); margin-left:10px; }
+  .comp-tag{
+    font-size:10px; color:var(--muted); border:1px solid var(--line); border-radius:3px;
+    padding:1px 6px; margin-left:8px; text-transform:uppercase; letter-spacing:0.04em;
+  }
+  .meta{ font-size:12px; color:var(--muted); text-align:right; line-height:1.5; }
+  .meta .hora{ color:var(--text); font-weight:600; }
+
+  .attr-table{ margin-bottom:12px; }
+  .attr-row{
+    display:grid; grid-template-columns:1fr 70px 70px; align-items:center;
+    gap:8px; font-size:12px; padding:4px 0;
+  }
+  .attr-row + .attr-row{ border-top:1px solid var(--line); }
+  .attr-row.header{ color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.05em; border-top:none; }
+  .attr-name{ color:var(--muted); }
+  .attr-z{ font-family:'IBM Plex Mono', monospace; font-weight:600; text-align:center; color:var(--text); }
+  .attr-z.alto{ color:var(--cool); }
+  .attr-z.baixo{ color:var(--alert); }
+  .attr-z.sem-dado{ color:var(--muted); font-weight:400; }
+
+  .goals-line{
+    font-size:12px; color:var(--muted); margin-bottom:12px; padding-bottom:12px;
+    border-bottom:1px dashed var(--line);
+  }
+  .goals-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+  .goals-lambda{ font-family:'IBM Plex Mono', monospace; color:var(--text); font-weight:600; }
+  .goals-placar{ font-family:'IBM Plex Mono', monospace; color:var(--gold); }
+  .prob-bar-1x2{ display:flex; height:8px; border-radius:4px; overflow:hidden; margin-bottom:5px; }
+  .prob-bar-1x2 .seg{ height:100%; }
+  .prob-bar-1x2 .seg.casa{ background:var(--cool); }
+  .prob-bar-1x2 .seg.empate{ background:var(--line); }
+  .prob-bar-1x2 .seg.fora{ background:var(--gold); }
+  .prob-labels{ display:flex; justify-content:space-between; font-size:11px; }
+  .prob-labels .fav{ color:var(--text); font-weight:600; }
+
+  .elo-line{
+    display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted);
+    margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--line);
+  }
+  .elo-num{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--text); flex-shrink:0; }
+  .elo-gauge{
+    position:relative; flex:1; max-width:140px; height:6px; border-radius:3px;
+    background:linear-gradient(90deg, var(--cool), var(--line) 50%, var(--gold)); flex-shrink:0;
+  }
+  .elo-gauge .dot{
+    position:absolute; top:-3px; width:12px; height:12px; border-radius:50%;
+    background:var(--text); border:2px solid var(--bg); transform:translateX(-50%);
+  }
+  .elo-tag{ font-weight:600; }
+  .elo-tag.casa{ color:var(--cool); }
+  .elo-tag.fora{ color:var(--gold); }
+
+  .ref-line{
+    display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted);
+    margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed var(--line);
+  }
+  .ref-gauge{ position:relative; width:110px; height:6px; border-radius:3px;
+    background:linear-gradient(90deg, var(--cool), var(--line) 50%, var(--alert)); flex-shrink:0; }
+  .ref-gauge .dot{ position:absolute; top:-3px; width:12px; height:12px; border-radius:50%;
+    background:var(--text); border:2px solid var(--bg); transform:translateX(-50%); }
+  .ref-factor{ font-family:'IBM Plex Mono', monospace; font-weight:600; }
+  .ref-factor.alto{ color:var(--alert); }
+  .ref-factor.baixo{ color:var(--cool); }
+
+  .periods{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:560px){ .periods{ grid-template-columns:1fr; } }
+  .period-box{ background:var(--panel-2); border-radius:6px; padding:12px 14px; }
+  .period-label{ font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:10px; }
+  .stat-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:5px 0; gap:8px; }
+  .stat-row + .stat-row{ border-top:1px solid var(--line); }
+  .stat-name{ color:var(--muted); flex-shrink:0; }
+  .stat-value{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:14px; text-align:right; }
+  .stat-split{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted); margin-left:6px; font-weight:400; }
+  .ou-tag{ font-size:10px; color:var(--muted); font-weight:400; margin-top:2px; }
+  .ou-tag b{ color:var(--gold); font-family:'IBM Plex Mono', monospace; }
+  .icon{ font-weight:700; margin-left:6px; }
+  .icon.ok{ color:var(--cool); }
+  .icon.no{ color:var(--alert); }
+
+  .empty, .loading{ text-align:center; color:var(--muted); padding:60px 20px; font-size:14px; }
+  .flag{ display:inline-block; font-size:10px; color:var(--gold); border:1px solid var(--gold);
+    border-radius:3px; padding:1px 5px; margin-left:6px; vertical-align:middle; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">Ficha de Jogo <span>·</span> Escanteios &amp; Cartões</div>
+  </header>
+
+  <div class="legend">
+    <b>Como ler:</b> médias ponderadas pelos últimos jogos (decaimento ~1 ano de meia-vida, não corta seco na virada de temporada). Escanteios ajustados pelo confronto (<code>força de A a favor × força de B contra</code>). Cartões ajustados pelo <b>fator do árbitro</b> (desvio dele vs. média da liga). <b>Atributos</b>: z-score = quantos desvios-padrão o time está acima (<span class="attr-z alto" style="font-size:inherit">verde</span>) ou abaixo (<span class="attr-z baixo" style="font-size:inherit">vermelho</span>) da média da própria liga nessa estatística. Depois que o jogo termina: <span class="icon ok">✓</span> o lado favorito do over/under bateu, <span class="icon no">✗</span> não bateu — só aparece pra jogos que já estavam no dashboard antes de acontecerem. <b>Gols/1X2</b>: λ (lambda) é o número esperado de gols de cada time (Poisson, ajustado pelo confronto); a barra mostra a probabilidade de vitória/empate/derrota somando todos os placares possíveis. <b>Over/Under</b>: sempre mostra o lado favorito (over ou under, o que tiver mais de 50%); a probabilidade usa Binomial Negativa calibrada com a dispersão real dos seus dados.
+  </div>
+
+  <div class="filter-row comp-filter" id="compFilter"></div>
+  <div class="filter-row" id="dateFilter">
+    <div class="day-nav" id="dayNav">
+      <button id="dayPrev">‹</button>
+      <span id="dayLabel">Hoje</span>
+      <button id="dayNext">›</button>
+    </div>
+    <span class="sep">|</span>
+    <span class="filter-link" data-mode="rodada">Jogos da Rodada</span>
+    <span class="filter-link" data-mode="next5">Próximos 5 dias</span>
+    <span class="filter-link" data-mode="next10">Próximos 10 dias</span>
+  </div>
+  <div class="filter-row" id="statusFilter">
+    <span class="filter-link" data-status="todos">Todos</span>
+    <span class="sep">|</span>
+    <span class="filter-link" data-status="aberto">Em Aberto</span>
+    <span class="sep">|</span>
+    <span class="filter-link" data-status="encerrado">Encerrados</span>
+  </div>
+  <div class="filter-row" id="sortFilter">
+    <span style="color:var(--muted)">Ordenar por:</span>
+    <span class="filter-link" data-sort="horario">Horário</span>
+    <span class="sep">|</span>
+    <span class="filter-link" data-sort="competicao">Competição</span>
+  </div>
+
+  <div id="content" class="loading">Carregando…</div>
+
+  <div style="text-align:center; font-size:10px; color:var(--muted); margin-top:30px; opacity:0.6;">
+    build 2026-07-08-v15 · Copa 2026 usa gols/Elo sem viés de mando (campo neutro) · over/under favorito · posição · 1T travado
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = "https://ruunctwdmbovcpuucgqo.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1dW5jdHdkbWJvdmNwdXVjZ3FvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDMwNTEsImV4cCI6MjA4OTc3OTA1MX0.Zsqj2SxXeZQPW46zcUpjdXmY8vX-Xi5G5z47CqljhP8";
+
+const COMPETICOES = [
+  { slug: "all", label: "Todas as competições" },
+  { slug: "brasileirao-a", label: "Brasileirão Série A" },
+  { slug: "brasileirao-b", label: "Brasileirão Série B" },
+  { slug: "copa-2026", label: "Copa do Mundo 2026" },
+  { slug: "uefa-champions-league", label: "Champions League" },
+  { slug: "uefa-conference-league", label: "Conference League" },
+];
+
+let DB = null; // tudo carregado uma vez; filtros so recortam localmente
+let filtroCompeticao = "all";
+let filtroData = { mode: "dia", dia: new Date() };
+let filtroStatus = "aberto";
+let sortMode = "horario"; // "horario" | "competicao"
+
+async function sbGet(path) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+  });
+  if (!res.ok) throw new Error(`Erro ao consultar ${path}: ${res.status}`);
+  return res.json();
+}
+
+async function sbGetAll(path, pageSize = 1000) {
+  // o Supabase/PostgREST limita a 1000 linhas por requisicao por padrao --
+  // sem paginacao, consultas grandes (ex: fut_matches com 1600+ linhas) sao
+  // truncadas SILENCIOSAMENTE (sem erro), cortando os jogos mais recentes
+  // quando ordenado por data ascendente. Aqui pagina via limit/offset na
+  // querystring (mais robusto que o header Range, que da erro 500 em views
+  // agregadas sem chave primaria como v_fut_match_actuals).
+  let all = [];
+  let start = 0;
+  while (true) {
+    const sep = path.includes("?") ? "&" : "?";
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}${sep}limit=${pageSize}&offset=${start}`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) throw new Error(`Erro ao consultar ${path}: ${res.status}`);
+    const page = await res.json();
+    all = all.concat(page);
+    if (page.length < pageSize) break;
+    start += pageSize;
+  }
+  return all;
+}
+async function sbUpsert(table, rows, onConflict) {
+  if (!rows.length) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"
+    },
+    body: JSON.stringify(rows)
+  });
+}
+function toMap(arr, keyFn) { const m = new Map(); for (const item of arr) m.set(keyFn(item), item); return m; }
+function fmt(n, casas = 1) { if (n === null || n === undefined || isNaN(n)) return "—"; return n.toFixed(casas).replace(".", ","); }
+function classeFator(f) { if (f == null) return ""; if (f >= 1.1) return "alto"; if (f <= 0.9) return "baixo"; return ""; }
+function diaKeyBR(d) { return d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); }
+function diaLabelBR(d) { return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "short", day: "2-digit", month: "short" }).replace(".", ""); }
+function escudoUrl(sofascoreTeamId) { return sofascoreTeamId ? `https://img.sofascore.com/api/v1/team/${sofascoreTeamId}/image` : ""; }
+function logoCompUrl(sofascoreTournamentId) { return sofascoreTournamentId ? `https://img.sofascore.com/api/v1/unique-tournament/${sofascoreTournamentId}/image` : ""; }
+const STATUS_FINALIZADOS = new Set(["Ended", "AP", "AET"]); // mesmo criterio do fut_scraper.py -- jogo decidido (normal, penaltis ou prorrogacao)
+function estaFinalizado(m) { return STATUS_FINALIZADOS.has(m.status); }
+
+// ---- Rating de forca geral (Elo simplificado) ----
+// ---- Comparacao de atributos (z-score vs. media da liga) ----
+const ATRIBUTOS = [
+  { key: "ballPossession", nome: "Posse de bola", unidade: "%" },
+  { key: "expectedGoals", nome: "Gols esperados (xG)", unidade: "" },
+  { key: "bigChanceCreated", nome: "Grandes chances criadas", unidade: "" },
+  { key: "accuratePasses", nome: "Passes certos", unidade: "" },
+  { key: "fouls", nome: "Faltas cometidas", unidade: "" },
+  { key: "totalTackle", nome: "Desarmes", unidade: "" },
+];
+
+function zScore(compId, teamId, statKey, period = "ALL") {
+  const perfil = DB.attrMap.get(`${compId}|${teamId}|${period}|${statKey}`);
+  const liga = DB.leagueAttrMap.get(`${compId}|${period}|${statKey}`);
+  if (!perfil || !liga || !liga.desvio_liga) return null;
+  return { z: (perfil.media - liga.media_liga) / liga.desvio_liga, media: perfil.media, n: perfil.n_jogos };
+}
+
+function classeZ(z) {
+  if (z == null) return "";
+  if (z >= 0.5) return "alto";
+  if (z <= -0.5) return "baixo";
+  return "";
+}
+
+// ---- Projecao de gols (Poisson) e favoritismo 1X2 ----
+function fatorial(n) {
+  let r = 1;
+  for (let i = 2; i <= n; i++) r *= i;
+  return r;
+}
+// ---- Gama (Lanczos) e Binomial Negativa -- pra probabilidade de over/under ----
+function logGama(x) {
+  const g = 7;
+  const c = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+  ];
+  if (x < 0.5) {
+    return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGama(1 - x);
+  }
+  x -= 1;
+  let a = c[0];
+  const t = x + g + 0.5;
+  for (let i = 1; i < g + 2; i++) a += c[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+
+function negBinomPMF(k, media, dispersaoIdx) {
+  // dispersaoIdx = variancia/media. Se <=1 (sub-dispersao), cai pro Poisson (r->infinito).
+  if (!dispersaoIdx || dispersaoIdx <= 1.02) return poissonPMF(k, media);
+  const r = media / (dispersaoIdx - 1);
+  const logP = logGama(k + r) - logGama(k + 1) - logGama(r)
+    + r * Math.log(r / (r + media)) + k * Math.log(media / (r + media));
+  return Math.exp(logP);
+}
+
+function probSobreLinha(media, dispersaoIdx, linha, usarNB = true, maxK = 40) {
+  // linha tipo 9.5 -> soma P(X<=9) e devolve 1 - isso = P(X>=10) = P(over 9.5)
+  if (media == null) return null;
+  const corte = Math.floor(linha);
+  let acumulado = 0;
+  for (let k = 0; k <= corte && k <= maxK; k++) {
+    acumulado += usarNB ? negBinomPMF(k, media, dispersaoIdx) : poissonPMF(k, media);
+  }
+  return Math.max(0, Math.min(1, 1 - acumulado));
+}
+
+function linhaNatural(media) {
+  // a linha de over/under mais proxima da media (ex: media 9.1 -> linha 9.5; media 4.05 -> linha 4.5)
+  if (media == null) return null;
+  return Math.max(0.5, Math.round(media - 0.5) + 0.5);
+}
+
+function poissonPMF(k, lambda) {
+  if (lambda <= 0) return k === 0 ? 1 : 0;
+  return Math.exp(-lambda) * Math.pow(lambda, k) / fatorial(k);
+}
+
+function projecaoGols(compId, homeId, awayId, period, maxGols = 8) {
+  const idx = (v, base) => (v && base) ? v / base : 1;
+  const neutro = DB.compById.get(compId)?.neutro === true;
+
+  let ligaMandante, ligaVisitante, homeProf, awayProf;
+  if (neutro) {
+    // campo neutro (ex: Copa do Mundo): a divisao mandante/visitante do
+    // Sofascore e so um rotulo, nao reflete vantagem real de jogar em casa --
+    // e com poucos jogos por time, separar por lado so gera ruido de amostra
+    // pequena (ex: um time com so 2 jogos "fora" e uma media inflada por
+    // sorte). Usa o perfil combinado (pooled), tratando os dois lados igual.
+    const ligaPooled = DB.leagueGoalMapPooled.get(`${compId}|${period}`)?.media_liga;
+    ligaMandante = ligaPooled;
+    ligaVisitante = ligaPooled;
+    homeProf = DB.goalMapPooled.get(`${compId}|${homeId}|${period}`);
+    awayProf = DB.goalMapPooled.get(`${compId}|${awayId}|${period}`);
+  } else {
+    ligaMandante = DB.leagueGoalMap.get(`${compId}|${period}|mandante`)?.media_liga;
+    ligaVisitante = DB.leagueGoalMap.get(`${compId}|${period}|visitante`)?.media_liga;
+    homeProf = DB.goalMap.get(`${compId}|${homeId}|${period}|mandante`);
+    awayProf = DB.goalMap.get(`${compId}|${awayId}|${period}|visitante`);
+  }
+
+  if (!ligaMandante || !ligaVisitante) {
+    return { lambdaHome: null, lambdaAway: null, pCasa: null, pEmpate: null, pFora: null, placarProvavel: null };
+  }
+
+  const lambdaHome = ligaMandante * idx(homeProf?.media_favor, ligaMandante) * idx(awayProf?.media_contra, ligaVisitante);
+  const lambdaAway = ligaVisitante * idx(awayProf?.media_favor, ligaVisitante) * idx(homeProf?.media_contra, ligaMandante);
+
+  let pCasa = 0, pEmpate = 0, pFora = 0;
+  let melhorP = -1, melhorPlacar = "0-0";
+  for (let h = 0; h <= maxGols; h++) {
+    for (let a = 0; a <= maxGols; a++) {
+      const p = poissonPMF(h, lambdaHome) * poissonPMF(a, lambdaAway);
+      if (h > a) pCasa += p; else if (h === a) pEmpate += p; else pFora += p;
+      if (p > melhorP) { melhorP = p; melhorPlacar = `${h}-${a}`; }
+    }
+  }
+  return { lambdaHome, lambdaAway, pCasa, pEmpate, pFora, placarProvavel: melhorPlacar };
+}
+
+function favoritoResultado(g) {
+  if (g.pCasa == null) return null;
+  if (g.pCasa >= g.pEmpate && g.pCasa >= g.pFora) return "casa";
+  if (g.pFora >= g.pEmpate && g.pFora >= g.pCasa) return "fora";
+  return "empate";
+}
+
+function resultadoReal(m) {
+  if (m.gols_mandante == null || m.gols_visitante == null) return null;
+  if (m.gols_mandante > m.gols_visitante) return "casa";
+  if (m.gols_mandante < m.gols_visitante) return "fora";
+  return "empate";
+}
+
+const ELO_BASE = 1500;
+const ELO_HOME_ADV = 80;  // bonus de mando, valor tipico na literatura (~60-100)
+const ELO_K = 30;         // fator de ajuste por jogo (K-factor)
+
+function computeElo(matchesDoComp, neutro = false) {
+  // usa TODO o historico disponivel (nao reseta por temporada -- um time
+  // carrega sua forca de um ano pro outro, so o resultado dos jogos que muda).
+  const homeAdv = neutro ? 0 : ELO_HOME_ADV; // campo neutro (ex: Copa do Mundo) nao tem vantagem de mando
+  const finalizados = matchesDoComp
+    .filter(m => estaFinalizado(m) && m.gols_mandante != null && m.gols_visitante != null)
+    .sort((a, b) => new Date(a.data_hora_utc) - new Date(b.data_hora_utc));
+
+  const ratings = new Map();
+  const rating = (id) => ratings.get(id) ?? ELO_BASE;
+
+  for (const m of finalizados) {
+    const Rh = rating(m.home_team_id);
+    const Ra = rating(m.away_team_id);
+    const We = 1 / (Math.pow(10, -(Rh + homeAdv - Ra) / 400) + 1);
+
+    let W;
+    if (m.gols_mandante > m.gols_visitante) W = 1;
+    else if (m.gols_mandante < m.gols_visitante) W = 0;
+    else W = 0.5; // empate no tempo normal OU decidido nos penaltis (AP) -- pra Elo, PK e so desempate
+
+    // multiplicador por goleada (mesmo espirito do World Football Elo, simplificado)
+    const diff = Math.abs(m.gols_mandante - m.gols_visitante);
+    const golMult = diff <= 1 ? 1 : diff === 2 ? 1.5 : 1.75 + (diff - 3) / 8;
+    const k = ELO_K * golMult;
+
+    ratings.set(m.home_team_id, Rh + k * (W - We));
+    ratings.set(m.away_team_id, Ra + k * ((1 - W) - (1 - We)));
+  }
+  return ratings;
+}
+
+// ---- Posicao na liga (tabela calculada a partir dos proprios jogos) ----
+function computeStandings(matches) {
+  // agrupa por fase (cobre casos de grupos, tipo Copa; Brasileirao tem 1 fase so)
+  const porFase = new Map();
+  for (const m of matches) {
+    if (m.rodada == null) continue;
+    if (!porFase.has(m.fase)) porFase.set(m.fase, []);
+    porFase.get(m.fase).push(m);
+  }
+
+  const posicaoPorTime = new Map();
+  const fasesRoundRobin = new Set();
+  for (const [fase, jogosFase] of porFase) {
+    // mata-mata tambem tem "rodada" no Sofascore (ex: Quarterfinals=27), mas e
+    // so um numero de sequencia interno -- toda a fase inteira usa 1 rodada so.
+    // Fase de grupos/liga de verdade tem VARIAS rodadas (1,2,3...). So calcula
+    // tabela de classificacao quando isso for o caso.
+    const rodadasDistintas = new Set(jogosFase.map(m => m.rodada));
+    if (rodadasDistintas.size < 2) continue;
+    fasesRoundRobin.add(fase);
+
+    const tabela = new Map();
+    const getT = (id) => {
+      if (!tabela.has(id)) tabela.set(id, { jogos: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 });
+      return tabela.get(id);
+    };
+    for (const m of jogosFase) {
+      if (!estaFinalizado(m) || m.gols_mandante == null || m.gols_visitante == null) continue;
+      const h = getT(m.home_team_id), a = getT(m.away_team_id);
+      h.jogos++; a.jogos++;
+      h.gp += m.gols_mandante; h.gc += m.gols_visitante;
+      a.gp += m.gols_visitante; a.gc += m.gols_mandante;
+      if (m.gols_mandante > m.gols_visitante) { h.v++; a.d++; }
+      else if (m.gols_mandante < m.gols_visitante) { a.v++; h.d++; }
+      else { h.e++; a.e++; }
+    }
+    const linhas = [...tabela.entries()].map(([id, s]) => ({ id, pts: s.v * 3 + s.e, sg: s.gp - s.gc, ...s }));
+    linhas.sort((x, y) => y.pts - x.pts || y.sg - x.sg || y.gp - x.gp);
+    linhas.forEach((linha, idx) => posicaoPorTime.set(linha.id, idx + 1));
+  }
+  return { posicaoPorTime, fasesRoundRobin };
+}
+
+function posicaoOrdinal(n) { return n != null ? `${n}º` : ""; }
+
+async function loadAll() {
+  const comps = await sbGet(`fut_competitions?select=id,slug,nome,sofascore_tournament_id,neutro`);
+  const compBySlug = toMap(comps, c => c.slug);
+  const compById = toMap(comps, c => c.id);
+  const ids = comps.map(c => c.id).join(",");
+
+  const [teams, matches, cornerProfiles, cardProfiles, leagueCorner, leagueCard, refereeProfiles, snapshots, actuals, attrProfiles, leagueAttrDist, shotProfiles, leagueShotAvg, goalProfiles, leagueGoalAvg, cornerDisp, cardDisp, shotDisp, goalProfilesPooled, leagueGoalAvgPooled] = await Promise.all([
+    sbGetAll(`fut_teams?select=id,nome,sofascore_team_id`),
+    sbGetAll(`fut_matches?select=id,competition_id,data_hora_utc,fase,rodada,temporada,estadio,cidade,arbitro_id,arbitro_nome,home_team_id,away_team_id,status,gols_mandante,gols_visitante&competition_id=in.(${ids})&order=data_hora_utc.asc`),
+    sbGet(`v_fut_team_corner_profile?competition_id=in.(${ids})`),
+    sbGet(`v_fut_team_card_profile?competition_id=in.(${ids})`),
+    sbGet(`v_fut_league_corner_avg?competition_id=in.(${ids})`),
+    sbGet(`v_fut_league_card_avg?competition_id=in.(${ids})`),
+    sbGet(`v_fut_referee_card_profile?competition_id=in.(${ids})`),
+    sbGetAll(`fut_match_projections?select=*`),
+    sbGetAll(`v_fut_match_actuals?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_team_attr_profile?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_league_attr_dist?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_team_shot_profile?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_league_shot_avg?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_team_goal_profile?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_league_goal_avg?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_league_corner_dispersion?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_league_card_dispersion?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_league_shot_dispersion?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_team_goal_profile_pooled?competition_id=in.(${ids})`),
+    sbGetAll(`v_fut_league_goal_avg_pooled?competition_id=in.(${ids})`),
+  ]);
+
+  const key3 = (c, t, p) => `${c}|${t}|${p}`;
+  const key2 = (a, b) => `${a}|${b}`;
+
+  const eloByComp = new Map();
+  const standingsByComp = new Map();
+  const roundRobinFasesByComp = new Map();
+  for (const compId of new Set(matches.map(m => m.competition_id))) {
+    const doComp = matches.filter(m => m.competition_id === compId);
+    eloByComp.set(compId, computeElo(doComp, compById.get(compId)?.neutro === true));
+
+    const temporadas = [...new Set(doComp.map(m => m.temporada))].sort();
+    const temporadaAtual = temporadas[temporadas.length - 1];
+    const { posicaoPorTime, fasesRoundRobin } = computeStandings(doComp.filter(m => m.temporada === temporadaAtual));
+    standingsByComp.set(compId, posicaoPorTime);
+    roundRobinFasesByComp.set(compId, fasesRoundRobin);
+  }
+
+  DB = {
+    compBySlug, compById,
+    teamNome: toMap(teams, t => t.id),
+    matches,
+    eloByComp,
+    standingsByComp,
+    roundRobinFasesByComp,
+    cornerMap: toMap(cornerProfiles, p => key3(p.competition_id, p.team_id, p.period)),
+    cardMap: toMap(cardProfiles, p => key3(p.competition_id, p.team_id, p.period)),
+    leagueCornerMap: toMap(leagueCorner, l => key2(l.competition_id, l.period)),
+    leagueCardMap: toMap(leagueCard, l => key2(l.competition_id, l.period)),
+    refereeMap: toMap(refereeProfiles, r => key3(r.competition_id, r.arbitro_id, r.period)),
+    snapshotMap: toMap(snapshots, s => key2(s.match_id, s.period)),
+    actualMap: toMap(actuals, a => key2(a.match_id, a.period)),
+    attrMap: toMap(attrProfiles, p => `${p.competition_id}|${p.team_id}|${p.period}|${p.stat_key}`),
+    leagueAttrMap: toMap(leagueAttrDist, l => `${l.competition_id}|${l.period}|${l.stat_key}`),
+    shotMap: toMap(shotProfiles, p => `${p.competition_id}|${p.team_id}|${p.period}|${p.stat_key}`),
+    leagueShotMap: toMap(leagueShotAvg, l => `${l.competition_id}|${l.period}|${l.stat_key}`),
+    goalMap: toMap(goalProfiles, p => `${p.competition_id}|${p.team_id}|${p.period}|${p.side}`),
+    leagueGoalMap: toMap(leagueGoalAvg, l => `${l.competition_id}|${l.period}|${l.side}`),
+    goalMapPooled: toMap(goalProfilesPooled, p => `${p.competition_id}|${p.team_id}|${p.period}`),
+    leagueGoalMapPooled: toMap(leagueGoalAvgPooled, l => `${l.competition_id}|${l.period}`),
+    cornerDispMap: toMap(cornerDisp, d => `${d.competition_id}|${d.period}`),
+    cardDispMap: toMap(cardDisp, d => `${d.competition_id}|${d.period}`),
+    shotDispMap: toMap(shotDisp, d => `${d.competition_id}|${d.period}|${d.stat_key}`),
+  };
+}
+
+function projecaoChutes(compId, homeId, awayId, period) {
+  const idx = (v, base) => (v && base) ? v / base : 1;
+
+  function calc(statKey) {
+    const liga = DB.leagueShotMap.get(`${compId}|${period}|${statKey}`)?.media_liga;
+    const home = DB.shotMap.get(`${compId}|${homeId}|${period}|${statKey}`);
+    const away = DB.shotMap.get(`${compId}|${awayId}|${period}|${statKey}`);
+    if (!liga) return { home: null, away: null };
+    const homeVal = liga * idx(home?.media_favor, liga) * idx(away?.media_contra, liga);
+    const awayVal = liga * idx(away?.media_favor, liga) * idx(home?.media_contra, liga);
+    return { home: homeVal, away: awayVal };
+  }
+
+  const total = calc("totalShotsOnGoal");
+  const noGol = calc("shotsOnGoal");
+  return {
+    chutesTotalHome: total.home, chutesTotalAway: total.away,
+    chutesGolHome: noGol.home, chutesGolAway: noGol.away,
+  };
+}
+
+function projecao(compId, homeId, awayId, period, arbitroId) {
+  const key3 = (t, p) => `${compId}|${t}|${p}`;
+  const lc = DB.leagueCornerMap.get(`${compId}|${period}`)?.media_liga_escanteios_time;
+  const lcard = DB.leagueCardMap.get(`${compId}|${period}`)?.media_liga_cartoes_time;
+  const home = DB.cornerMap.get(key3(homeId, period));
+  const away = DB.cornerMap.get(key3(awayId, period));
+  const homeCard = DB.cardMap.get(key3(homeId, period));
+  const awayCard = DB.cardMap.get(key3(awayId, period));
+  const idx = (v, base) => (v && base) ? v / base : 1;
+
+  const escHome = lc ? lc * idx(home?.media_escanteios_favor, lc) * idx(away?.media_escanteios_contra, lc) : null;
+  const escAway = lc ? lc * idx(away?.media_escanteios_favor, lc) * idx(home?.media_escanteios_contra, lc) : null;
+
+  const ref = arbitroId ? DB.refereeMap.get(`${compId}|${arbitroId}|${period}`) : null;
+  const fatorArbitro = ref?.fator_arbitro ?? 1;
+
+  const cardHome = lcard ? lcard * idx(homeCard?.media_cartoes, lcard) * fatorArbitro : null;
+  const cardAway = lcard ? lcard * idx(awayCard?.media_cartoes, lcard) * fatorArbitro : null;
+
+  return {
+    escHome, escAway, escTotal: (escHome ?? 0) + (escAway ?? 0),
+    cardHome, cardAway, cardTotal: (cardHome ?? 0) + (cardAway ?? 0),
+    fatorArbitro, refNJogos: ref?.n_jogos ?? 0,
+  };
+}
+
+// ---- deteccao da "rodada aberta" (primeira rodada com jogo nao encerrado) ----
+function rodadaAtual(matchesDoComp) {
+  const agora = Date.now();
+  const comRodada = matchesDoComp.filter(m => m.rodada != null);
+  const pool = comRodada.length ? comRodada : matchesDoComp; // fallback: mata-mata sem numero de rodada (ex: Copa)
+
+  const abertos = pool.filter(m => !estaFinalizado(m));
+  if (!abertos.length) return null;
+
+  // escolhe o jogo aberto mais PROXIMO DE HOJE (nao a menor rodada numerica).
+  // isso evita que um jogo antigo travado com status anomalo (adiado, WO, etc,
+  // que nunca virou "Ended" no Sofascore) sequestre a deteccao e mostre uma
+  // rodada de meses atras como se fosse a atual.
+  let melhor = abertos[0];
+  let menorDist = Math.abs(new Date(abertos[0].data_hora_utc).getTime() - agora);
+  for (const m of abertos) {
+    const dist = Math.abs(new Date(m.data_hora_utc).getTime() - agora);
+    if (dist < menorDist) { menorDist = dist; melhor = m; }
+  }
+
+  return comRodada.length
+    ? { tipo: "rodada", valor: melhor.rodada }
+    : { tipo: "fase", valor: melhor.fase };
+}
+
+function matchesDaRodada(compId) {
+  const doCompTudo = DB.matches.filter(m => m.competition_id === compId);
+  // restringe a temporada mais recente presente -- evita misturar "Rodada 3"
+  // da temporada passada com "Rodada 3" da atual quando ha historico de 2 temporadas
+  const temporadas = [...new Set(doCompTudo.map(m => m.temporada))].sort();
+  const temporadaAtual = temporadas[temporadas.length - 1];
+  const doComp = doCompTudo.filter(m => m.temporada === temporadaAtual);
+
+  const atual = rodadaAtual(doComp);
+  if (!atual) return [];
+  return atual.tipo === "rodada"
+    ? doComp.filter(m => m.rodada === atual.valor)
+    : doComp.filter(m => m.fase === atual.valor);
+}
+
+function getCompIds() {
+  if (filtroCompeticao === "all") return DB.compBySlug.size ? [...DB.compBySlug.values()].map(c => c.id) : [];
+  const c = DB.compBySlug.get(filtroCompeticao);
+  return c ? [c.id] : [];
+}
+
+function getMatchesToShow() {
+  const compIds = new Set(getCompIds());
+  let pool = DB.matches.filter(m => compIds.has(m.competition_id));
+
+  if (filtroData.mode === "dia") {
+    const alvo = diaKeyBR(filtroData.dia);
+    pool = pool.filter(m => diaKeyBR(new Date(m.data_hora_utc)) === alvo);
+  } else if (filtroData.mode === "next5" || filtroData.mode === "next10") {
+    const dias = filtroData.mode === "next5" ? 5 : 10;
+    const agora = new Date();
+    const ate = new Date(agora.getTime() + dias * 86400000);
+    pool = pool.filter(m => { const d = new Date(m.data_hora_utc); return d >= agora && d <= ate; });
+  } else if (filtroData.mode === "rodada") {
+    let out = [];
+    for (const cid of compIds) out = out.concat(matchesDaRodada(cid));
+    pool = out;
+  }
+
+  if (filtroStatus === "aberto") pool = pool.filter(m => !estaFinalizado(m));
+  if (filtroStatus === "encerrado") pool = pool.filter(m => estaFinalizado(m));
+  return pool;
+}
+
+function renderCompFilter() {
+  const el = document.getElementById("compFilter");
+  el.innerHTML = COMPETICOES.map((c, i) =>
+    `${i > 0 ? '<span class="sep">|</span>' : ''}<span class="filter-link ${c.slug === filtroCompeticao ? 'active' : ''}" data-comp="${c.slug}">${c.label}</span>`
+  ).join("");
+  el.querySelectorAll("[data-comp]").forEach(elm => elm.addEventListener("click", () => {
+    filtroCompeticao = elm.dataset.comp; render();
+  }));
+}
+
+function renderDateFilter() {
+  document.getElementById("dayNav").classList.toggle("active", filtroData.mode === "dia");
+  const hojeKey = diaKeyBR(new Date());
+  const alvoKey = diaKeyBR(filtroData.dia);
+  document.getElementById("dayLabel").textContent = alvoKey === hojeKey ? "Hoje" : diaLabelBR(filtroData.dia);
+
+  document.querySelectorAll("#dateFilter [data-mode]").forEach(el => {
+    el.classList.toggle("active", filtroData.mode === el.dataset.mode);
+  });
+}
+
+function renderStatusFilter() {
+  document.querySelectorAll("#statusFilter [data-status]").forEach(el => {
+    el.classList.toggle("active", filtroStatus === el.dataset.status);
+  });
+}
+
+function renderSortFilter() {
+  document.querySelectorAll("#sortFilter [data-sort]").forEach(el => {
+    el.classList.toggle("active", sortMode === el.dataset.sort);
+  });
+}
+
+
+function ouCalc(media, dispersaoIdx) {
+  // devolve {linha, probOver} -- probOver e sempre "probabilidade de over",
+  // o lado favorito e derivado (probOver>=0.5 -> over; senao -> under)
+  if (media == null) return null;
+  const linha = linhaNatural(media);
+  const probOver = probSobreLinha(media, dispersaoIdx, linha);
+  if (probOver == null) return null;
+  return { linha, probOver };
+}
+
+function ouTag(media, dispersaoIdx) {
+  const calc = ouCalc(media, dispersaoIdx);
+  if (!calc) return "";
+  const favoritoOver = calc.probOver >= 0.5;
+  const prob = favoritoOver ? calc.probOver : 1 - calc.probOver;
+  const lado = favoritoOver ? "over" : "under";
+  return `<div class="ou-tag">${lado} ${fmt(calc.linha, 1)}: <b>${Math.round(prob * 100)}%</b></div>`;
+}
+
+function badgeOverUnder(real, linha, probOver) {
+  if (real == null || linha == null || probOver == null) return null;
+  const favoritoOver = probOver >= 0.5;
+  const bateu = favoritoOver ? real > linha : real < linha;
+  const lado = favoritoOver ? "over" : "under";
+  return {
+    icon: `<span class="icon ${bateu ? 'ok' : 'no'}">${bateu ? '✓' : '✗'}</span>`,
+    texto: `${lado} ${fmt(linha, 1)} previsto`,
+  };
+}
+
+function periodBox(label, compId, m, period) {
+  const finalizado = estaFinalizado(m);
+  if (!finalizado) {
+    const p = projecao(compId, m.home_team_id, m.away_team_id, period, m.arbitro_id);
+    const c = projecaoChutes(compId, m.home_team_id, m.away_team_id, period);
+
+    if (period === "1ST") {
+      // o 1T e calculado de forma independente do jogo completo (cada um com seu
+      // proprio ajuste), entao nada garante matematicamente que 1T <= completo.
+      // trava aqui pra nunca mostrar um 1o tempo maior que o jogo inteiro.
+      const pFT = projecao(compId, m.home_team_id, m.away_team_id, "ALL", m.arbitro_id);
+      const cFT = projecaoChutes(compId, m.home_team_id, m.away_team_id, "ALL");
+      p.escHome = Math.min(p.escHome, pFT.escHome);
+      p.escAway = Math.min(p.escAway, pFT.escAway);
+      p.cardHome = Math.min(p.cardHome, pFT.cardHome);
+      p.cardAway = Math.min(p.cardAway, pFT.cardAway);
+      p.escTotal = p.escHome + p.escAway;
+      p.cardTotal = p.cardHome + p.cardAway;
+      c.chutesTotalHome = Math.min(c.chutesTotalHome, cFT.chutesTotalHome);
+      c.chutesTotalAway = Math.min(c.chutesTotalAway, cFT.chutesTotalAway);
+      c.chutesGolHome = Math.min(c.chutesGolHome, cFT.chutesGolHome);
+      c.chutesGolAway = Math.min(c.chutesGolAway, cFT.chutesGolAway);
+    }
+
+    const chutesTotal = (c.chutesTotalHome ?? 0) + (c.chutesTotalAway ?? 0);
+    const chutesGolTotal = (c.chutesGolHome ?? 0) + (c.chutesGolAway ?? 0);
+
+    const dispEsc = DB.cornerDispMap.get(`${compId}|${period}`)?.dispersao_idx;
+    const dispCard = DB.cardDispMap.get(`${compId}|${period}`)?.dispersao_idx;
+    const dispChutesTotal = DB.shotDispMap.get(`${compId}|${period}|totalShotsOnGoal`)?.dispersao_idx;
+    const dispChutesGol = DB.shotDispMap.get(`${compId}|${period}|shotsOnGoal`)?.dispersao_idx;
+
+    return `
+      <div class="period-box">
+        <div class="period-label">${label}</div>
+        <div class="stat-row"><span class="stat-name">Total de finalizações</span>
+          <span class="stat-value">${fmt(chutesTotal)}<span class="stat-split">(${fmt(c.chutesTotalHome)} / ${fmt(c.chutesTotalAway)})</span>${ouTag(chutesTotal, dispChutesTotal)}</span></div>
+        <div class="stat-row"><span class="stat-name">Finalizações no gol</span>
+          <span class="stat-value">${fmt(chutesGolTotal)}<span class="stat-split">(${fmt(c.chutesGolHome)} / ${fmt(c.chutesGolAway)})</span>${ouTag(chutesGolTotal, dispChutesGol)}</span></div>
+        <div class="stat-row"><span class="stat-name">Escanteios (total)</span>
+          <span class="stat-value">${fmt(p.escTotal)}<span class="stat-split">(${fmt(p.escHome)} / ${fmt(p.escAway)})</span>${ouTag(p.escTotal, dispEsc)}</span></div>
+        <div class="stat-row"><span class="stat-name">Cartões (total)</span>
+          <span class="stat-value">${fmt(p.cardTotal)}<span class="stat-split">(${fmt(p.cardHome)} / ${fmt(p.cardAway)})</span>${ouTag(p.cardTotal, dispCard)}</span></div>
+      </div>`;
+  }
+  // jogo encerrado: usa a previsao CONGELADA (snapshot), nunca recalcula
+  const snap = DB.snapshotMap.get(`${m.id}|${period}`);
+  const real = DB.actualMap.get(`${m.id}|${period}`);
+  const chutesReal = real && real.chutes_total_home != null ? real.chutes_total_home + real.chutes_total_away : null;
+  const chutesGolReal = real && real.chutes_gol_home != null ? real.chutes_gol_home + real.chutes_gol_away : null;
+  const escReal = real ? real.esc_home + real.esc_away : null;
+  const cardReal = real ? real.card_home + real.card_away : null;
+  const semSnapshot = !snap || snap.esc_prob_over == null;
+
+  const bChutesTotal = snap ? badgeOverUnder(chutesReal, snap.chutes_total_linha, snap.chutes_total_prob_over) : null;
+  const bChutesGol = snap ? badgeOverUnder(chutesGolReal, snap.chutes_gol_linha, snap.chutes_gol_prob_over) : null;
+  const bEsc = snap ? badgeOverUnder(escReal, snap.esc_linha, snap.esc_prob_over) : null;
+  const bCard = snap ? badgeOverUnder(cardReal, snap.card_linha, snap.card_prob_over) : null;
+
+  const linha = (nome, realVal, badge) => `
+      <div class="stat-row"><span class="stat-name">${nome}</span>
+        <span class="stat-value">${fmt(realVal, 0)}${badge ? badge.icon : ''}${badge ? `<span class="stat-split">${badge.texto}</span>` : ''}</span></div>`;
+
+  return `
+    <div class="period-box">
+      <div class="period-label">${label}${semSnapshot ? ' <span class="flag">sem previsão prévia</span>' : ''}</div>
+      ${linha("Total de finalizações", chutesReal, bChutesTotal)}
+      ${linha("Finalizações no gol", chutesGolReal, bChutesGol)}
+      ${linha("Escanteios", escReal, bEsc)}
+      ${linha("Cartões", cardReal, bCard)}
+    </div>`;
+}
+
+function renderGoalsLine(compId, m, homeName, awayName) {
+  const finalizado = estaFinalizado(m);
+  const pct = (p) => p != null ? Math.round(p * 100) : null;
+
+  if (!finalizado) {
+    const g = projecaoGols(compId, m.home_team_id, m.away_team_id, "ALL");
+    if (g.lambdaHome == null) return "";
+    const pc = pct(g.pCasa), pe = pct(g.pEmpate), pf = pct(g.pFora);
+    const fav = favoritoResultado(g);
+    const favLabel = fav === "casa" ? homeName : fav === "fora" ? awayName : "Empate";
+    return `
+    <div class="goals-line">
+      <div class="goals-top">
+        <span>λ gols: <span class="goals-lambda">${fmt(g.lambdaHome)} × ${fmt(g.lambdaAway)}</span></span>
+        <span>Placar mais provável: <span class="goals-placar">${g.placarProvavel}</span></span>
+      </div>
+      <div class="prob-bar-1x2">
+        <div class="seg casa" style="width:${pc}%"></div>
+        <div class="seg empate" style="width:${pe}%"></div>
+        <div class="seg fora" style="width:${pf}%"></div>
+      </div>
+      <div class="prob-labels">
+        <span>${pc}% Casa</span><span>${pe}% Empate</span><span>${pf}% Fora</span>
+      </div>
+      <div class="prob-labels"><span class="fav">Favorito: ${favLabel}</span></div>
+    </div>`;
+  }
+
+  // encerrado: usa o snapshot congelado e compara com o resultado real
+  const snap = DB.snapshotMap.get(`${m.id}|ALL`);
+  const real = resultadoReal(m);
+  if (!snap || snap.prob_casa == null) {
+    return `<div class="goals-line"><span class="flag">sem previsão prévia de gols</span></div>`;
+  }
+  const fav = favoritoResultado({ pCasa: snap.prob_casa, pEmpate: snap.prob_empate, pFora: snap.prob_fora });
+  const favLabel = fav === "casa" ? homeName : fav === "fora" ? awayName : "Empate";
+  const bateu = fav === real;
+  return `
+    <div class="goals-line">
+      <div class="prob-labels">
+        <span>Previsto: <span class="fav">${favLabel}</span> (${pct(snap.prob_casa)}/${pct(snap.prob_empate)}/${pct(snap.prob_fora)})</span>
+        <span>${bateu ? '<span class="icon ok">✓ favorito bateu</span>' : '<span class="icon no">✗ favorito não bateu</span>'}</span>
+      </div>
+    </div>`;
+}
+
+function renderMatchCard(m, toSave) {
+  const compId = m.competition_id;
+  const compNome = DB.compById.get(compId)?.nome ?? "";
+  const homeName = DB.teamNome.get(m.home_team_id)?.nome ?? "?";
+  const awayName = DB.teamNome.get(m.away_team_id)?.nome ?? "?";
+  const hora = new Date(m.data_hora_utc).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+  const finalizado = estaFinalizado(m);
+
+  if (!finalizado) {
+    const pFT = projecao(compId, m.home_team_id, m.away_team_id, "ALL", m.arbitro_id);
+    const p1T = projecao(compId, m.home_team_id, m.away_team_id, "1ST", m.arbitro_id);
+    const cFT = projecaoChutes(compId, m.home_team_id, m.away_team_id, "ALL");
+    const c1T = projecaoChutes(compId, m.home_team_id, m.away_team_id, "1ST");
+    const gFT = projecaoGols(compId, m.home_team_id, m.away_team_id, "ALL");
+    const g1T = projecaoGols(compId, m.home_team_id, m.away_team_id, "1ST");
+
+    // trava o 1T pra nunca ultrapassar o jogo completo (mesma logica do periodBox)
+    p1T.escHome = Math.min(p1T.escHome, pFT.escHome);
+    p1T.escAway = Math.min(p1T.escAway, pFT.escAway);
+    p1T.cardHome = Math.min(p1T.cardHome, pFT.cardHome);
+    p1T.cardAway = Math.min(p1T.cardAway, pFT.cardAway);
+    c1T.chutesTotalHome = Math.min(c1T.chutesTotalHome, cFT.chutesTotalHome);
+    c1T.chutesTotalAway = Math.min(c1T.chutesTotalAway, cFT.chutesTotalAway);
+    c1T.chutesGolHome = Math.min(c1T.chutesGolHome, cFT.chutesGolHome);
+    c1T.chutesGolAway = Math.min(c1T.chutesGolAway, cFT.chutesGolAway);
+
+    // calcula over/under (linha + probabilidade) pra escanteios/cartoes/chutes,
+    // nos dois periodos -- isso e o que vira o criterio de acerto depois do jogo
+    const ouEscFT = ouCalc(pFT.escTotal, DB.cornerDispMap.get(`${compId}|ALL`)?.dispersao_idx);
+    const ouEsc1T = ouCalc(p1T.escTotal, DB.cornerDispMap.get(`${compId}|1ST`)?.dispersao_idx);
+    const ouCardFT = ouCalc(pFT.cardTotal, DB.cardDispMap.get(`${compId}|ALL`)?.dispersao_idx);
+    const ouCard1T = ouCalc(p1T.cardTotal, DB.cardDispMap.get(`${compId}|1ST`)?.dispersao_idx);
+    const chutesTotalFT = (cFT.chutesTotalHome ?? 0) + (cFT.chutesTotalAway ?? 0);
+    const chutesTotal1T = (c1T.chutesTotalHome ?? 0) + (c1T.chutesTotalAway ?? 0);
+    const chutesGolFT = (cFT.chutesGolHome ?? 0) + (cFT.chutesGolAway ?? 0);
+    const chutesGol1T = (c1T.chutesGolHome ?? 0) + (c1T.chutesGolAway ?? 0);
+    const ouChutesTotalFT = ouCalc(chutesTotalFT, DB.shotDispMap.get(`${compId}|ALL|totalShotsOnGoal`)?.dispersao_idx);
+    const ouChutesTotal1T = ouCalc(chutesTotal1T, DB.shotDispMap.get(`${compId}|1ST|totalShotsOnGoal`)?.dispersao_idx);
+    const ouChutesGolFT = ouCalc(chutesGolFT, DB.shotDispMap.get(`${compId}|ALL|shotsOnGoal`)?.dispersao_idx);
+    const ouChutesGol1T = ouCalc(chutesGol1T, DB.shotDispMap.get(`${compId}|1ST|shotsOnGoal`)?.dispersao_idx);
+
+    toSave.push({
+      match_id: m.id, period: "ALL", esc_home: pFT.escHome, esc_away: pFT.escAway,
+      card_home: pFT.cardHome, card_away: pFT.cardAway, fator_arbitro: pFT.fatorArbitro,
+      chutes_total_home: cFT.chutesTotalHome, chutes_total_away: cFT.chutesTotalAway,
+      chutes_gol_home: cFT.chutesGolHome, chutes_gol_away: cFT.chutesGolAway,
+      lambda_home: gFT.lambdaHome, lambda_away: gFT.lambdaAway,
+      prob_casa: gFT.pCasa, prob_empate: gFT.pEmpate, prob_fora: gFT.pFora,
+      esc_linha: ouEscFT?.linha, esc_prob_over: ouEscFT?.probOver,
+      card_linha: ouCardFT?.linha, card_prob_over: ouCardFT?.probOver,
+      chutes_total_linha: ouChutesTotalFT?.linha, chutes_total_prob_over: ouChutesTotalFT?.probOver,
+      chutes_gol_linha: ouChutesGolFT?.linha, chutes_gol_prob_over: ouChutesGolFT?.probOver,
+      computed_at: new Date().toISOString(),
+    });
+    toSave.push({
+      match_id: m.id, period: "1ST", esc_home: p1T.escHome, esc_away: p1T.escAway,
+      card_home: p1T.cardHome, card_away: p1T.cardAway, fator_arbitro: p1T.fatorArbitro,
+      chutes_total_home: c1T.chutesTotalHome, chutes_total_away: c1T.chutesTotalAway,
+      chutes_gol_home: c1T.chutesGolHome, chutes_gol_away: c1T.chutesGolAway,
+      lambda_home: g1T.lambdaHome, lambda_away: g1T.lambdaAway,
+      prob_casa: g1T.pCasa, prob_empate: g1T.pEmpate, prob_fora: g1T.pFora,
+      esc_linha: ouEsc1T?.linha, esc_prob_over: ouEsc1T?.probOver,
+      card_linha: ouCard1T?.linha, card_prob_over: ouCard1T?.probOver,
+      chutes_total_linha: ouChutesTotal1T?.linha, chutes_total_prob_over: ouChutesTotal1T?.probOver,
+      chutes_gol_linha: ouChutesGol1T?.linha, chutes_gol_prob_over: ouChutesGol1T?.probOver,
+      computed_at: new Date().toISOString(),
+    });
+  }
+
+  const pRef = projecao(compId, m.home_team_id, m.away_team_id, "ALL", m.arbitro_id);
+  const gaugePos = Math.min(100, Math.max(0, ((pRef.fatorArbitro - 0.7) / 0.6) * 100));
+  const arbitroLabel = m.arbitro_nome
+    ? `${m.arbitro_nome} <span class="ref-factor ${classeFator(pRef.fatorArbitro)}">${fmt(pRef.fatorArbitro, 2)}×</span>${pRef.refNJogos < 5 ? '<span class="flag">poucos jogos</span>' : ''}`
+    : `árbitro a definir <span class="ref-factor">1,00×</span>`;
+
+  const eloMap = DB.eloByComp.get(compId) || new Map();
+  const homeElo = eloMap.get(m.home_team_id) ?? ELO_BASE;
+  const awayElo = eloMap.get(m.away_team_id) ?? ELO_BASE;
+  const eloDiff = Math.round(homeElo - awayElo);
+  const eloGaugePos = Math.min(100, Math.max(0, 50 + (eloDiff / 300) * 50));
+  let favoritoTag;
+  if (Math.abs(eloDiff) < 25) favoritoTag = `<span class="elo-tag">Equilibrado</span>`;
+  else if (eloDiff > 0) favoritoTag = `<span class="elo-tag casa">${homeName} favorito (+${eloDiff})</span>`;
+  else favoritoTag = `<span class="elo-tag fora">${awayName} favorito (+${-eloDiff})</span>`;
+
+  return `
+  <div class="match-card ${finalizado ? 'encerrado' : ''}">
+    <div class="match-top">
+      <div class="teams">
+        ${escudoUrl(DB.teamNome.get(m.home_team_id)?.sofascore_team_id) ? `<img class="escudo" src="${escudoUrl(DB.teamNome.get(m.home_team_id)?.sofascore_team_id)}" onerror="this.style.display='none'">` : ''}
+        ${homeName}${DB.standingsByComp.get(compId)?.get(m.home_team_id) ? `<span class="posicao">${posicaoOrdinal(DB.standingsByComp.get(compId).get(m.home_team_id))}</span>` : ''}<span class="vs">vs</span>${DB.standingsByComp.get(compId)?.get(m.away_team_id) ? `<span class="posicao">${posicaoOrdinal(DB.standingsByComp.get(compId).get(m.away_team_id))}</span>` : ''}${awayName}
+        ${escudoUrl(DB.teamNome.get(m.away_team_id)?.sofascore_team_id) ? `<img class="escudo" src="${escudoUrl(DB.teamNome.get(m.away_team_id)?.sofascore_team_id)}" onerror="this.style.display='none'">` : ''}
+        ${finalizado ? `<span class="placar">${m.gols_mandante ?? '-'} x ${m.gols_visitante ?? '-'}</span>` : ''}
+        ${filtroCompeticao === 'all' && sortMode !== 'competicao' ? `<span class="comp-tag">${logoCompUrl(DB.compById.get(compId)?.sofascore_tournament_id) ? `<img class="comp-logo" src="${logoCompUrl(DB.compById.get(compId)?.sofascore_tournament_id)}" onerror="this.style.display='none'">` : ''}${compNome}</span>` : ''}
+      </div>
+      <div class="meta"><span class="hora">${hora}</span><br>${(m.rodada != null && DB.roundRobinFasesByComp.get(compId)?.has(m.fase)) ? `Rodada ${m.rodada} · ` : ''}${m.fase ?? ''}${m.estadio ? ' · ' + m.estadio : ''}</div>
+    </div>
+    <div class="elo-line">
+      <span class="elo-num">${Math.round(homeElo)}</span>
+      <div class="elo-gauge"><div class="dot" style="left:${eloGaugePos}%"></div></div>
+      <span class="elo-num">${Math.round(awayElo)}</span>
+      ${favoritoTag}
+    </div>
+    ${renderGoalsLine(compId, m, homeName, awayName)}
+    <div class="ref-line">
+      <div class="ref-gauge"><div class="dot" style="left:${gaugePos}%"></div></div>
+      <div>Árbitro: ${arbitroLabel}</div>
+    </div>
+    <div class="attr-table">
+      <div class="attr-row header"><span></span><span>Casa</span><span>Fora</span></div>
+      ${ATRIBUTOS.map(attr => {
+        const zh = zScore(compId, m.home_team_id, attr.key);
+        const za = zScore(compId, m.away_team_id, attr.key);
+        const fmtZ = (r) => r ? `${r.z >= 0 ? '+' : ''}${fmt(r.z, 1)}σ` : '—';
+        return `
+        <div class="attr-row">
+          <span class="attr-name">${attr.nome}</span>
+          <span class="attr-z ${zh ? classeZ(zh.z) : 'sem-dado'}">${fmtZ(zh)}</span>
+          <span class="attr-z ${za ? classeZ(za.z) : 'sem-dado'}">${fmtZ(za)}</span>
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="periods">
+      ${periodBox("1º Tempo", compId, m, "1ST")}
+      ${periodBox("Jogo Completo", compId, m, "ALL")}
+    </div>
+  </div>`;
+}
+
+function renderPorDia(jogos, toSave) {
+  const porDia = new Map();
+  for (const m of jogos) {
+    const dKey = diaKeyBR(new Date(m.data_hora_utc));
+    if (!porDia.has(dKey)) porDia.set(dKey, []);
+    porDia.get(dKey).push(m);
+  }
+  const diasOrdenados = [...porDia.keys()].sort();
+  let html = "";
+  for (const dKey of diasOrdenados) {
+    const jogosDoDia = porDia.get(dKey).sort((a, b) => new Date(a.data_hora_utc) - new Date(b.data_hora_utc));
+    html += `<div class="section-title">${diaLabelBR(new Date(jogosDoDia[0].data_hora_utc))}</div>`;
+    for (const m of jogosDoDia) html += renderMatchCard(m, toSave);
+  }
+  return html;
+}
+
+function render() {
+  renderCompFilter();
+  renderDateFilter();
+  renderStatusFilter();
+  renderSortFilter();
+  const contentEl = document.getElementById("content");
+
+  const jogos = getMatchesToShow();
+  if (!jogos.length) {
+    contentEl.className = "";
+    contentEl.innerHTML = `<div class="empty">Nenhum jogo encontrado com esse filtro. Tenta "Jogos da Rodada" ou navega pra outro dia.</div>`;
+    return;
+  }
+
+  const toSave = [];
+  let html = "";
+
+  if (sortMode === "competicao") {
+    const ordemComps = COMPETICOES.filter(c => c.slug !== "all").map(c => DB.compBySlug.get(c.slug)?.id).filter(id => id != null);
+    for (const compId of ordemComps) {
+      const jogosDaComp = jogos.filter(m => m.competition_id === compId);
+      if (!jogosDaComp.length) continue;
+      const comp = DB.compById.get(compId);
+      const logo = logoCompUrl(comp?.sofascore_tournament_id);
+      html += `<div class="section-title">${logo ? `<img class="comp-logo" src="${logo}" onerror="this.style.display='none'">` : ''}${comp?.nome ?? ''}</div>`;
+      html += renderPorDia(jogosDaComp, toSave);
+    }
+  } else {
+    html += renderPorDia(jogos, toSave);
+  }
+
+  contentEl.className = "";
+  contentEl.innerHTML = html;
+  if (toSave.length) sbUpsert("fut_match_projections", toSave, "match_id,period").catch(console.error);
+}
+
+function initControls() {
+  document.getElementById("dayPrev").addEventListener("click", () => {
+    filtroData = { mode: "dia", dia: new Date(filtroData.dia.getTime() - 86400000) };
+    render();
+  });
+  document.getElementById("dayNext").addEventListener("click", () => {
+    filtroData = { mode: "dia", dia: new Date(filtroData.dia.getTime() + 86400000) };
+    render();
+  });
+  document.getElementById("dayLabel").addEventListener("click", () => {
+    filtroData = { mode: "dia", dia: new Date() };
+    render();
+  });
+  document.querySelectorAll("#dateFilter [data-mode]").forEach(el => {
+    el.addEventListener("click", () => { filtroData = { mode: el.dataset.mode, dia: filtroData.dia }; render(); });
+  });
+  document.querySelectorAll("#statusFilter [data-status]").forEach(el => {
+    el.addEventListener("click", () => { filtroStatus = el.dataset.status; render(); });
+  });
+  document.querySelectorAll("#sortFilter [data-sort]").forEach(el => {
+    el.addEventListener("click", () => { sortMode = el.dataset.sort; render(); });
+  });
+}
+
+async function boot() {
+  initControls();
+  try {
+    await loadAll();
+    render();
+  } catch (err) {
+    document.getElementById("content").innerHTML = `<div class="empty">Erro ao carregar dashboard: ${err.message}</div>`;
+    console.error(err);
+  }
+}
+boot();
+</script>
+</body>
+</html>
