@@ -42,23 +42,6 @@
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     font-size:13px; padding:10px 0;
   }
-  .confiabilidade{
-    background:var(--panel); border:1px solid var(--line); border-radius:6px;
-    padding:10px 16px; margin-bottom:18px; font-size:13px;
-  }
-  .confiabilidade summary{ cursor:pointer; color:var(--gold); font-weight:600; padding:4px 0; }
-  .conf-list{ margin-top:10px; }
-  .conf-row{
-    display:flex; align-items:center; gap:10px; padding:6px 0; font-size:12px;
-  }
-  .conf-row + .conf-row{ border-top:1px solid var(--line); }
-  .conf-nome{ flex:1; color:var(--text); }
-  .conf-periodo{ color:var(--muted); font-weight:400; }
-  .conf-amostra{ color:var(--muted); font-family:'IBM Plex Mono', monospace; font-size:11px; }
-  .conf-pct{ font-family:'IBM Plex Mono', monospace; font-weight:700; min-width:42px; text-align:right; }
-  .conf-pct.alto{ color:var(--cool); }
-  .conf-pct.baixo{ color:var(--alert); }
-  .conf-list-scroll{ max-height:320px; overflow-y:auto; }
 
   .filter-row.comp-filter{ border-bottom:1px solid var(--line); }
   .filter-link{
@@ -175,6 +158,15 @@
   .stat-value{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:14px; text-align:right; }
   .stat-split{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted); margin-left:6px; font-weight:400; }
   .ou-tag{ font-size:10px; color:var(--muted); font-weight:400; margin-top:2px; }
+  .hist-tag{
+    font-size:10px; font-family:'IBM Plex Mono', monospace; font-weight:600;
+    color:var(--muted); border:1px solid var(--line); border-radius:3px; padding:0px 4px;
+  }
+  .hist-tag.alto{ color:var(--cool); border-color:var(--cool); }
+  .hist-tag.baixo{ color:var(--alert); border-color:var(--alert); }
+  .hist-tag.baixo-conf{ color:var(--muted); font-style:italic; }
+  .hist-tag.sem-dado{ font-style:italic; font-weight:400; }
+  .hist-row{ display:flex; gap:6px; align-items:center; margin-top:3px; font-size:10px; color:var(--muted); }
   .ou-tag b{ color:var(--gold); font-family:'IBM Plex Mono', monospace; }
   .icon{ font-weight:700; margin-left:6px; }
   .icon.ok{ color:var(--cool); }
@@ -193,7 +185,7 @@
   </header>
 
   <div class="legend">
-    <b>Como ler:</b> médias ponderadas pelos últimos jogos (decaimento ~1 ano de meia-vida, não corta seco na virada de temporada). Escanteios ajustados pelo confronto (<code>força de A a favor × força de B contra</code>). Cartões ajustados pelo <b>fator do árbitro</b> (desvio dele vs. média da liga). <b>Atributos</b>: z-score = quantos desvios-padrão o time está acima (<span class="attr-z alto" style="font-size:inherit">verde</span>) ou abaixo (<span class="attr-z baixo" style="font-size:inherit">vermelho</span>) da média da própria liga nessa estatística. Depois que o jogo termina: <span class="icon ok">✓</span> o lado favorito do over/under bateu, <span class="icon no">✗</span> não bateu — só aparece pra jogos que já estavam no dashboard antes de acontecerem. <b>Gols/1X2</b>: λ (lambda) é o número esperado de gols de cada time (Poisson, ajustado pelo confronto); a barra mostra a probabilidade de vitória/empate/derrota somando todos os placares possíveis. <b>Over/Under</b>: sempre mostra o lado favorito (over ou under, o que tiver mais de 50%); a probabilidade usa Binomial Negativa calibrada com a dispersão real dos seus dados.
+    <b>Como ler:</b> médias ponderadas pelos últimos jogos (decaimento ~1 ano de meia-vida, não corta seco na virada de temporada). Escanteios ajustados pelo confronto (<code>força de A a favor × força de B contra</code>). Cartões ajustados pelo <b>fator do árbitro</b> (desvio dele vs. média da liga). <b>Atributos</b>: z-score = quantos desvios-padrão o time está acima (<span class="attr-z alto" style="font-size:inherit">verde</span>) ou abaixo (<span class="attr-z baixo" style="font-size:inherit">vermelho</span>) da média da própria liga nessa estatística. Depois que o jogo termina: <span class="icon ok">✓</span> o lado favorito do over/under bateu, <span class="icon no">✗</span> não bateu — só aparece pra jogos que já estavam no dashboard antes de acontecerem. <b>Gols/1X2</b>: λ (lambda) é o número esperado de gols de cada time (Poisson, ajustado pelo confronto); a barra mostra a probabilidade de vitória/empate/derrota somando todos os placares possíveis. <b>Over/Under</b>: sempre mostra o lado favorito (over ou under, o que tiver mais de 50%); a probabilidade usa Binomial Negativa calibrada com a dispersão real dos seus dados. <b>🏠/🚗 X/Y (Z%)</b>: histórico de acerto desse indicador especificamente pra esse time (nos jogos passados dele) — quanto mais perto de 50%, menos confiável é essa previsão; itálico = amostra pequena (menos de 5 jogos), não confie ainda.
   </div>
 
   <div class="filter-row comp-filter" id="compFilter"></div>
@@ -225,7 +217,7 @@
   <div id="content" class="loading">Carregando…</div>
 
   <div style="text-align:center; font-size:10px; color:var(--muted); margin-top:30px; opacity:0.6;">
-    build 2026-07-08-v17 · confiabilidade por time · confiabilidade por indicador · over/under favorito · Elo
+    build 2026-07-08-v18 · histórico por time embutido em cada indicador (substitui os painéis) · over/under · Elo
   </div>
 
 </div>
@@ -803,17 +795,21 @@ function periodBox(label, compId, m, period) {
     const dispChutesTotal = DB.shotDispMap.get(`${compId}|${period}|totalShotsOnGoal`)?.dispersao_idx;
     const dispChutesGol = DB.shotDispMap.get(`${compId}|${period}|shotsOnGoal`)?.dispersao_idx;
 
+    function statRow(nome, indKey, total, home, away, dispIdx) {
+      return `
+        <div class="stat-row"><span class="stat-name">${nome}</span>
+          <span class="stat-value">${fmt(total)}<span class="stat-split">(${fmt(home)} / ${fmt(away)})</span>${ouTag(total, dispIdx)}
+          <div class="hist-row">🏠 ${historicoTag(m.home_team_id, indKey, period)} <span>·</span> 🚗 ${historicoTag(m.away_team_id, indKey, period)}</div>
+          </span></div>`;
+    }
+
     return `
       <div class="period-box">
         <div class="period-label">${label}</div>
-        <div class="stat-row"><span class="stat-name">Total de finalizações</span>
-          <span class="stat-value">${fmt(chutesTotal)}<span class="stat-split">(${fmt(c.chutesTotalHome)} / ${fmt(c.chutesTotalAway)})</span>${ouTag(chutesTotal, dispChutesTotal)}</span></div>
-        <div class="stat-row"><span class="stat-name">Finalizações no gol</span>
-          <span class="stat-value">${fmt(chutesGolTotal)}<span class="stat-split">(${fmt(c.chutesGolHome)} / ${fmt(c.chutesGolAway)})</span>${ouTag(chutesGolTotal, dispChutesGol)}</span></div>
-        <div class="stat-row"><span class="stat-name">Escanteios (total)</span>
-          <span class="stat-value">${fmt(p.escTotal)}<span class="stat-split">(${fmt(p.escHome)} / ${fmt(p.escAway)})</span>${ouTag(p.escTotal, dispEsc)}</span></div>
-        <div class="stat-row"><span class="stat-name">Cartões (total)</span>
-          <span class="stat-value">${fmt(p.cardTotal)}<span class="stat-split">(${fmt(p.cardHome)} / ${fmt(p.cardAway)})</span>${ouTag(p.cardTotal, dispCard)}</span></div>
+        ${statRow("Total de finalizações", "chutes_total", chutesTotal, c.chutesTotalHome, c.chutesTotalAway, dispChutesTotal)}
+        ${statRow("Finalizações no gol", "chutes_gol", chutesGolTotal, c.chutesGolHome, c.chutesGolAway, dispChutesGol)}
+        ${statRow("Escanteios (total)", "esc", p.escTotal, p.escHome, p.escAway, dispEsc)}
+        ${statRow("Cartões (total)", "card", p.cardTotal, p.cardHome, p.cardAway, dispCard)}
       </div>`;
   }
   // jogo encerrado: usa a previsao CONGELADA (snapshot), nunca recalcula
@@ -1036,7 +1032,7 @@ function renderPorDia(jogos, toSave) {
   return html;
 }
 
-// ---- Confiabilidade dos indicadores (% de acerto historico, por indicador) ----
+// ---- Confiabilidade da previsao: historico desse indicador especifico, pra cada time ----
 const INDICADORES_ACERTO = [
   { key: "esc", nome: "Escanteios" },
   { key: "card", nome: "Cartões" },
@@ -1044,137 +1040,45 @@ const INDICADORES_ACERTO = [
   { key: "chutes_gol", nome: "Finalizações no gol" },
 ];
 
-function computeAccuracyStats(compIds) {
-  const idsSet = new Set(compIds);
-  const finalizados = DB.matches.filter(m => idsSet.has(m.competition_id) && estaFinalizado(m));
-
-  const resultado = []; // {chave, nome, periodoLabel, acertos, total}
-  for (const period of ["1ST", "ALL"]) {
-    for (const ind of INDICADORES_ACERTO) {
-      let acertos = 0, total = 0;
-      for (const m of finalizados) {
-        const snap = DB.snapshotMap.get(`${m.id}|${period}`);
-        const real = DB.actualMap.get(`${m.id}|${period}`);
-        if (!snap || !real) continue;
-        const linha = snap[`${ind.key}_linha`];
-        const probOver = snap[`${ind.key}_prob_over`];
-        if (linha == null || probOver == null) continue;
-
-        let realVal;
-        if (ind.key === "esc") realVal = real.esc_home + real.esc_away;
-        else if (ind.key === "card") realVal = real.card_home + real.card_away;
-        else if (ind.key === "chutes_total") realVal = real.chutes_total_home != null ? real.chutes_total_home + real.chutes_total_away : null;
-        else if (ind.key === "chutes_gol") realVal = real.chutes_gol_home != null ? real.chutes_gol_home + real.chutes_gol_away : null;
-        if (realVal == null) continue;
-
-        const favoritoOver = probOver >= 0.5;
-        const bateu = favoritoOver ? realVal > linha : realVal < linha;
-        total++;
-        if (bateu) acertos++;
-      }
-      if (total > 0) {
-        resultado.push({
-          nome: ind.nome,
-          periodoLabel: period === "1ST" ? "1º Tempo" : "Jogo Completo",
-          acertos, total, pct: acertos / total,
-        });
-      }
-    }
-  }
-  resultado.sort((a, b) => b.pct - a.pct);
-  return resultado;
+function valorRealIndicador(real, indKey) {
+  if (indKey === "esc") return real.esc_home + real.esc_away;
+  if (indKey === "card") return real.card_home + real.card_away;
+  if (indKey === "chutes_total") return real.chutes_total_home != null ? real.chutes_total_home + real.chutes_total_away : null;
+  if (indKey === "chutes_gol") return real.chutes_gol_home != null ? real.chutes_gol_home + real.chutes_gol_away : null;
+  return null;
 }
 
-function renderConfiabilidade() {
-  const compIds = getCompIds();
-  const stats = computeAccuracyStats(compIds);
-  if (!stats.length) return "";
-
-  const linhas = stats.map(s => {
-    const pct = Math.round(s.pct * 100);
-    const classe = pct >= 55 ? "alto" : pct < 45 ? "baixo" : "";
-    const poucoJogos = s.total < 10 ? '<span class="flag">poucos jogos</span>' : "";
-    return `
-      <div class="conf-row">
-        <span class="conf-nome">${s.nome} <span class="conf-periodo">(${s.periodoLabel})</span></span>
-        <span class="conf-amostra">${s.acertos}/${s.total} jogos</span>
-        <span class="conf-pct ${classe}">${pct}%</span>
-        ${poucoJogos}
-      </div>`;
-  }).join("");
-
-  return `
-    <details class="confiabilidade">
-      <summary>📊 Confiabilidade dos indicadores (histórico de acerto)</summary>
-      <div class="conf-list">${linhas}</div>
-    </details>`;
-}
-
-function computeAccuracyByTeam(compIds) {
-  const idsSet = new Set(compIds);
-  const finalizados = DB.matches.filter(m => idsSet.has(m.competition_id) && estaFinalizado(m));
-  const porTime = new Map(); // team_id -> {acertos, total}
-
-  for (const m of finalizados) {
-    const snap = DB.snapshotMap.get(`${m.id}|ALL`);
-    const real = DB.actualMap.get(`${m.id}|ALL`);
+function teamIndicatorAccuracy(teamId, indKey, period) {
+  // historico de acerto desse indicador especifico (ex: escanteios, 1T), olhando
+  // SO os jogos passados desse time -- responde "quando a gente projeta esse
+  // numero pra esse time, quantas vezes bateu?"
+  let acertos = 0, total = 0;
+  for (const m of DB.matches) {
+    if (!estaFinalizado(m)) continue;
+    if (m.home_team_id !== teamId && m.away_team_id !== teamId) continue;
+    const snap = DB.snapshotMap.get(`${m.id}|${period}`);
+    const real = DB.actualMap.get(`${m.id}|${period}`);
     if (!snap || !real) continue;
-
-    for (const ind of INDICADORES_ACERTO) {
-      const linha = snap[`${ind.key}_linha`];
-      const probOver = snap[`${ind.key}_prob_over`];
-      if (linha == null || probOver == null) continue;
-
-      let realVal;
-      if (ind.key === "esc") realVal = real.esc_home + real.esc_away;
-      else if (ind.key === "card") realVal = real.card_home + real.card_away;
-      else if (ind.key === "chutes_total") realVal = real.chutes_total_home != null ? real.chutes_total_home + real.chutes_total_away : null;
-      else if (ind.key === "chutes_gol") realVal = real.chutes_gol_home != null ? real.chutes_gol_home + real.chutes_gol_away : null;
-      if (realVal == null) continue;
-
-      const favoritoOver = probOver >= 0.5;
-      const bateu = favoritoOver ? realVal > linha : realVal < linha;
-
-      for (const teamId of [m.home_team_id, m.away_team_id]) {
-        if (!porTime.has(teamId)) porTime.set(teamId, { acertos: 0, total: 0 });
-        const t = porTime.get(teamId);
-        t.total++;
-        if (bateu) t.acertos++;
-      }
-    }
+    const linha = snap[`${indKey}_linha`];
+    const probOver = snap[`${indKey}_prob_over`];
+    if (linha == null || probOver == null) continue;
+    const realVal = valorRealIndicador(real, indKey);
+    if (realVal == null) continue;
+    const favoritoOver = probOver >= 0.5;
+    const bateu = favoritoOver ? realVal > linha : realVal < linha;
+    total++;
+    if (bateu) acertos++;
   }
-
-  const linhas = [...porTime.entries()].map(([teamId, t]) => ({
-    teamId, nome: DB.teamNome.get(teamId)?.nome ?? "?",
-    acertos: t.acertos, total: t.total, pct: t.acertos / t.total,
-  }));
-  linhas.sort((a, b) => b.pct - a.pct);
-  return linhas;
+  return { acertos, total };
 }
 
-function renderConfiabilidadePorTime() {
-  const compIds = getCompIds();
-  const times = computeAccuracyByTeam(compIds);
-  if (!times.length) return "";
-
-  const linhas = times.map(t => {
-    const pct = Math.round(t.pct * 100);
-    const classe = pct >= 55 ? "alto" : pct < 45 ? "baixo" : "";
-    const poucoJogos = t.total < 10 ? '<span class="flag">poucos jogos</span>' : "";
-    return `
-      <div class="conf-row">
-        <span class="conf-nome">${t.nome}</span>
-        <span class="conf-amostra">${t.acertos}/${t.total}</span>
-        <span class="conf-pct ${classe}">${pct}%</span>
-        ${poucoJogos}
-      </div>`;
-  }).join("");
-
-  return `
-    <details class="confiabilidade">
-      <summary>🏆 Confiabilidade por time (média dos indicadores)</summary>
-      <div class="conf-list conf-list-scroll">${linhas}</div>
-    </details>`;
+function historicoTag(teamId, indKey, period) {
+  const h = teamIndicatorAccuracy(teamId, indKey, period);
+  if (h.total === 0) return `<span class="hist-tag sem-dado">sem histórico</span>`;
+  const pct = Math.round((h.acertos / h.total) * 100);
+  const classe = h.total < 5 ? "baixo-conf" : pct >= 60 ? "alto" : pct < 40 ? "baixo" : "";
+  const aviso = h.total < 5 ? " <span class=\"flag\">poucos jogos</span>" : "";
+  return `<span class="hist-tag ${classe}">${h.acertos}/${h.total} (${pct}%)</span>${aviso}`;
 }
 
 function render() {
@@ -1187,12 +1091,12 @@ function render() {
   const jogos = getMatchesToShow();
   if (!jogos.length) {
     contentEl.className = "";
-    contentEl.innerHTML = renderConfiabilidade() + renderConfiabilidadePorTime() + `<div class="empty">Nenhum jogo encontrado com esse filtro. Tenta "Jogos da Rodada" ou navega pra outro dia.</div>`;
+    contentEl.innerHTML = `<div class="empty">Nenhum jogo encontrado com esse filtro. Tenta "Jogos da Rodada" ou navega pra outro dia.</div>`;
     return;
   }
 
   const toSave = [];
-  let html = renderConfiabilidade() + renderConfiabilidadePorTime();
+  let html = "";
 
   if (sortMode === "competicao") {
     const ordemComps = COMPETICOES.filter(c => c.slug !== "all").map(c => DB.compBySlug.get(c.slug)?.id).filter(id => id != null);
