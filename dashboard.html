@@ -162,6 +162,7 @@
     background:rgba(212,169,74,0.12); border:1px solid var(--gold); border-radius:6px;
     padding:8px 12px; margin-bottom:12px; font-size:12px; color:var(--text);
   }
+  .melhor-sinal.fora-curva{ background:rgba(76,140,107,0.12); border-color:var(--cool); }
   .destaque-sinal{ background:rgba(212,169,74,0.08); border-radius:4px; margin:0 -8px; padding:5px 8px !important; }
   .destaque-sinal .stat-name{ color:var(--gold); font-weight:600; }
   .hist-tag{
@@ -223,7 +224,7 @@
   <div id="content" class="loading">Carregando…</div>
 
   <div style="text-align:center; font-size:10px; color:var(--muted); margin-top:30px; opacity:0.6;">
-    build 2026-07-08-v20 · sinal mais forte do jogo (🔥) · over/under de gols · histórico por time · Elo
+    build 2026-07-08-v21 · sinal fora da curva (desvio da média da liga) · sinal mais forte · Elo
   </div>
 
 </div>
@@ -834,9 +835,12 @@ function periodBox(label, compId, m, period, melhorSinal) {
     const dispChutesGol = DB.shotDispMap.get(`${compId}|${period}|shotsOnGoal`)?.dispersao_idx;
 
     function statRow(nome, indKey, total, home, away, dispIdx) {
-      const ehMelhor = melhorSinal && melhorSinal.period === period && melhorSinal.indKey === indKey;
+      const ehMelhorConf = melhorSinal?.melhorConfianca && melhorSinal.melhorConfianca.period === period && melhorSinal.melhorConfianca.indKey === indKey;
+      const ehForaDaCurva = melhorSinal?.melhorForaDaCurva && melhorSinal.melhorForaDaCurva.period === period && melhorSinal.melhorForaDaCurva.indKey === indKey;
+      const ehMelhor = ehMelhorConf || ehForaDaCurva;
+      const icone = ehMelhorConf && ehForaDaCurva ? "🔥📈 " : ehMelhorConf ? "🔥 " : ehForaDaCurva ? "📈 " : "";
       return `
-        <div class="stat-row ${ehMelhor ? 'destaque-sinal' : ''}"><span class="stat-name">${ehMelhor ? '🔥 ' : ''}${nome}</span>
+        <div class="stat-row ${ehMelhor ? 'destaque-sinal' : ''}"><span class="stat-name">${icone}${nome}</span>
           <span class="stat-value">${fmt(total)}<span class="stat-split">(${fmt(home)} / ${fmt(away)})</span>${ouTag(total, dispIdx)}
           <div class="hist-row">🏠 ${historicoTag(m.home_team_id, indKey, period)} <span>·</span> 🚗 ${historicoTag(m.away_team_id, indKey, period)}</div>
           </span></div>`;
@@ -882,7 +886,10 @@ function periodBox(label, compId, m, period, melhorSinal) {
 function renderGoalsLine(compId, m, homeName, awayName, melhorSinal) {
   const finalizado = estaFinalizado(m);
   const pct = (p) => p != null ? Math.round(p * 100) : null;
-  const ehMelhor = melhorSinal && melhorSinal.indKey === "gols";
+  const ehMelhorConf = melhorSinal?.melhorConfianca?.indKey === "gols";
+  const ehForaDaCurva = melhorSinal?.melhorForaDaCurva?.indKey === "gols";
+  const ehMelhor = ehMelhorConf || ehForaDaCurva;
+  const iconeGols = ehMelhorConf && ehForaDaCurva ? "🔥📈 " : ehMelhorConf ? "🔥 " : ehForaDaCurva ? "📈 " : "";
 
   if (!finalizado) {
     const g = projecaoGols(compId, m.home_team_id, m.away_team_id, "ALL");
@@ -898,7 +905,7 @@ function renderGoalsLine(compId, m, homeName, awayName, melhorSinal) {
     return `
     <div class="goals-line ${ehMelhor ? 'destaque-sinal' : ''}">
       <div class="goals-top">
-        <span>${ehMelhor ? '🔥 ' : ''}λ gols: <span class="goals-lambda">${fmt(g.lambdaHome)} × ${fmt(g.lambdaAway)}</span> <span class="goals-lambda">(total ${fmt(totalGols)})</span></span>
+        <span>${iconeGols}λ gols: <span class="goals-lambda">${fmt(g.lambdaHome)} × ${fmt(g.lambdaAway)}</span> <span class="goals-lambda">(total ${fmt(totalGols)})</span></span>
         <span>Placar mais provável: <span class="goals-placar">${g.placarProvavel}</span></span>
       </div>
       ${golsTag}
@@ -953,27 +960,50 @@ function computeMelhorSinal(compId, m) {
   const chutesGolFT = (cFT.chutesGolHome ?? 0) + (cFT.chutesGolAway ?? 0);
   const chutesGol1T = Math.min((c1T.chutesGolHome ?? 0) + (c1T.chutesGolAway ?? 0), chutesGolFT);
 
+  const golsMediaLiga = (period) => {
+    const m1 = DB.leagueGoalMap.get(`${compId}|${period}|mandante`)?.media_liga;
+    const m2 = DB.leagueGoalMap.get(`${compId}|${period}|visitante`)?.media_liga;
+    return (m1 != null && m2 != null) ? m1 + m2 : null;
+  };
+  const golsLigaFT = golsMediaLiga("ALL");
+
   const candidatos = [
-    { period: "1ST", indKey: "esc", nome: "Escanteios (1º Tempo)", calc: ouCalc(esc1T, DB.cornerDispMap.get(`${compId}|1ST`)?.dispersao_idx) },
-    { period: "ALL", indKey: "esc", nome: "Escanteios (Jogo Completo)", calc: ouCalc(pFT.escTotal, DB.cornerDispMap.get(`${compId}|ALL`)?.dispersao_idx) },
-    { period: "1ST", indKey: "card", nome: "Cartões (1º Tempo)", calc: ouCalc(card1T, DB.cardDispMap.get(`${compId}|1ST`)?.dispersao_idx) },
-    { period: "ALL", indKey: "card", nome: "Cartões (Jogo Completo)", calc: ouCalc(pFT.cardTotal, DB.cardDispMap.get(`${compId}|ALL`)?.dispersao_idx) },
-    { period: "1ST", indKey: "chutes_total", nome: "Total de finalizações (1º Tempo)", calc: ouCalc(chutesTotal1T, DB.shotDispMap.get(`${compId}|1ST|totalShotsOnGoal`)?.dispersao_idx) },
-    { period: "ALL", indKey: "chutes_total", nome: "Total de finalizações (Jogo Completo)", calc: ouCalc(chutesTotalFT, DB.shotDispMap.get(`${compId}|ALL|totalShotsOnGoal`)?.dispersao_idx) },
-    { period: "1ST", indKey: "chutes_gol", nome: "Finalizações no gol (1º Tempo)", calc: ouCalc(chutesGol1T, DB.shotDispMap.get(`${compId}|1ST|shotsOnGoal`)?.dispersao_idx) },
-    { period: "ALL", indKey: "chutes_gol", nome: "Finalizações no gol (Jogo Completo)", calc: ouCalc(chutesGolFT, DB.shotDispMap.get(`${compId}|ALL|shotsOnGoal`)?.dispersao_idx) },
-    { period: "ALL", indKey: "gols", nome: "Total de gols", calc: gFT.lambdaHome != null ? ouCalc(gFT.lambdaHome + gFT.lambdaAway, null) : null },
+    { period: "1ST", indKey: "esc", nome: "Escanteios (1º Tempo)", media: esc1T, disp: DB.cornerDispMap.get(`${compId}|1ST`) },
+    { period: "ALL", indKey: "esc", nome: "Escanteios (Jogo Completo)", media: pFT.escTotal, disp: DB.cornerDispMap.get(`${compId}|ALL`) },
+    { period: "1ST", indKey: "card", nome: "Cartões (1º Tempo)", media: card1T, disp: DB.cardDispMap.get(`${compId}|1ST`) },
+    { period: "ALL", indKey: "card", nome: "Cartões (Jogo Completo)", media: pFT.cardTotal, disp: DB.cardDispMap.get(`${compId}|ALL`) },
+    { period: "1ST", indKey: "chutes_total", nome: "Total de finalizações (1º Tempo)", media: chutesTotal1T, disp: DB.shotDispMap.get(`${compId}|1ST|totalShotsOnGoal`) },
+    { period: "ALL", indKey: "chutes_total", nome: "Total de finalizações (Jogo Completo)", media: chutesTotalFT, disp: DB.shotDispMap.get(`${compId}|ALL|totalShotsOnGoal`) },
+    { period: "1ST", indKey: "chutes_gol", nome: "Finalizações no gol (1º Tempo)", media: chutesGol1T, disp: DB.shotDispMap.get(`${compId}|1ST|shotsOnGoal`) },
+    { period: "ALL", indKey: "chutes_gol", nome: "Finalizações no gol (Jogo Completo)", media: chutesGolFT, disp: DB.shotDispMap.get(`${compId}|ALL|shotsOnGoal`) },
+    { period: "ALL", indKey: "gols", nome: "Total de gols", media: gFT.lambdaHome != null ? gFT.lambdaHome + gFT.lambdaAway : null,
+      disp: golsLigaFT != null ? { media: golsLigaFT, variancia: golsLigaFT } : null }, // gols ~ Poisson, variancia ~ media
   ];
 
-  let melhor = null;
+  let melhorConfianca = null;
+  let melhorForaDaCurva = null;
   for (const c of candidatos) {
-    if (!c.calc) continue;
-    const conf = Math.max(c.calc.probOver, 1 - c.calc.probOver);
-    if (!melhor || conf > melhor.conf) {
-      melhor = { period: c.period, indKey: c.indKey, nome: c.nome, conf, linha: c.calc.linha, lado: c.calc.probOver >= 0.5 ? "over" : "under" };
+    if (c.media == null || !c.disp) continue;
+    const calc = ouCalc(c.media, c.disp.dispersao_idx);
+    if (!calc) continue;
+    const conf = Math.max(calc.probOver, 1 - calc.probOver);
+    const item = { period: c.period, indKey: c.indKey, nome: c.nome, conf, linha: calc.linha, lado: calc.probOver >= 0.5 ? "over" : "under" };
+    if (!melhorConfianca || conf > melhorConfianca.conf) melhorConfianca = item;
+
+    // "fora da curva": o quanto a media PROJETADA pra esse jogo foge da media
+    // normal da liga naquele indicador -- diferente de "confianca", que so olha
+    // a distancia de 50%. Um "under 2,5 cartoes no 1T" pode ter confianca alta
+    // so porque isso e o padrao da liga inteira (obvio, nao especifico desses
+    // times); o desvio da media da liga e que mostra o que e realmente atipico.
+    if (c.disp.variancia > 0) {
+      const desvioPadrao = Math.sqrt(c.disp.variancia);
+      const z = (c.media - c.disp.media) / desvioPadrao;
+      if (!melhorForaDaCurva || Math.abs(z) > Math.abs(melhorForaDaCurva.z)) {
+        melhorForaDaCurva = { period: c.period, indKey: c.indKey, nome: c.nome, z, media: c.media, mediaLiga: c.disp.media };
+      }
     }
   }
-  return melhor;
+  return { melhorConfianca, melhorForaDaCurva };
 }
 
 function renderMatchCard(m, toSave) {
@@ -1080,7 +1110,8 @@ function renderMatchCard(m, toSave) {
       </div>
       <div class="meta"><span class="hora">${hora}</span><br>${(m.rodada != null && DB.roundRobinFasesByComp.get(compId)?.has(m.fase)) ? `Rodada ${m.rodada} · ` : ''}${m.fase ?? ''}${m.estadio ? ' · ' + m.estadio : ''}</div>
     </div>
-    ${melhorSinal ? `<div class="melhor-sinal">🔥 Sinal mais forte: <b>${melhorSinal.nome}</b> — ${melhorSinal.lado} ${fmt(melhorSinal.linha, 1)} (${Math.round(melhorSinal.conf * 100)}%)</div>` : ''}
+    ${melhorSinal?.melhorConfianca ? `<div class="melhor-sinal">🔥 Sinal mais forte: <b>${melhorSinal.melhorConfianca.nome}</b> — ${melhorSinal.melhorConfianca.lado} ${fmt(melhorSinal.melhorConfianca.linha, 1)} (${Math.round(melhorSinal.melhorConfianca.conf * 100)}%)</div>` : ''}
+    ${melhorSinal?.melhorForaDaCurva && Math.abs(melhorSinal.melhorForaDaCurva.z) >= 0.5 ? `<div class="melhor-sinal fora-curva">📈 Fora da curva: <b>${melhorSinal.melhorForaDaCurva.nome}</b> — média projetada ${fmt(melhorSinal.melhorForaDaCurva.media)} (liga: ${fmt(melhorSinal.melhorForaDaCurva.mediaLiga)}, ${melhorSinal.melhorForaDaCurva.z >= 0 ? '+' : ''}${fmt(melhorSinal.melhorForaDaCurva.z, 1)}σ)</div>` : ''}
     <div class="elo-line">
       <span class="elo-num">${Math.round(homeElo)}</span>
       <div class="elo-gauge"><div class="dot" style="left:${eloGaugePos}%"></div></div>
