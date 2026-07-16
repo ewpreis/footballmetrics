@@ -163,6 +163,44 @@
     padding:8px 12px; margin-bottom:12px; font-size:12px; color:var(--text);
   }
   .melhor-sinal.fora-curva{ background:rgba(76,140,107,0.12); border-color:var(--cool); }
+
+  .btn-bilhete{
+    display:block; width:100%; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--gold); font-weight:600; font-size:12px; padding:8px; border-radius:6px;
+    cursor:pointer; margin-bottom:12px; font-family:'Inter', sans-serif;
+  }
+  .btn-bilhete:hover{ border-color:var(--gold); }
+
+  .bilhete-modal-overlay{
+    display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center; padding:20px;
+  }
+  .bilhete-modal-box{
+    background:var(--bg); border:1px solid var(--gold); border-radius:10px;
+    max-width:520px; width:100%; max-height:85vh; overflow-y:auto; padding:0;
+  }
+  .bilhete-header{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg);
+  }
+  .bilhete-titulo{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:15px; }
+  .bilhete-titulo .vs{ color:var(--muted); font-weight:500; margin:0 6px; font-size:12px; }
+  .bilhete-fechar{
+    background:none; border:1px solid var(--line); color:var(--text); border-radius:4px;
+    width:26px; height:26px; cursor:pointer; font-size:14px;
+  }
+  .bilhete-fechar:hover{ border-color:var(--alert); color:var(--alert); }
+  .bilhete-lista{ padding:8px 20px; }
+  .bilhete-item{ padding:10px 0; }
+  .bilhete-item + .bilhete-item{ border-top:1px solid var(--line); }
+  .bilhete-item-topo{ display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:4px; }
+  .bilhete-nome{ flex:1; color:var(--text); font-weight:600; }
+  .bilhete-periodo{ color:var(--muted); font-weight:400; font-size:11px; }
+  .bilhete-linha{ font-family:'IBM Plex Mono', monospace; color:var(--gold); font-weight:600; font-size:12px; }
+  .bilhete-conf{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; min-width:36px; text-align:right; }
+  .bilhete-hist{ display:flex; gap:16px; font-size:11px; color:var(--muted); }
+  .bilhete-hist b{ color:var(--text); }
+  .bilhete-rodape{ padding:12px 20px 18px; font-size:10px; color:var(--muted); border-top:1px solid var(--line); }
   .destaque-sinal{ background:rgba(212,169,74,0.08); border-radius:4px; margin:0 -8px; padding:5px 8px !important; }
   .destaque-sinal .stat-name{ color:var(--gold); font-weight:600; }
   .hist-tag{
@@ -223,8 +261,12 @@
 
   <div id="content" class="loading">Carregando…</div>
 
+  <div id="bilheteModal" class="bilhete-modal-overlay" onclick="if(event.target===this) fecharBilhete()">
+    <div class="bilhete-modal-box" id="bilheteModalBody"></div>
+  </div>
+
   <div style="text-align:center; font-size:10px; color:var(--muted); margin-top:30px; opacity:0.6;">
-    build 2026-07-08-v21 · sinal fora da curva (desvio da média da liga) · sinal mais forte · Elo
+    build 2026-07-08-v22 · bilhete de aposta sugerida (todos os indicadores) · fora da curva · Elo
   </div>
 
 </div>
@@ -1119,6 +1161,7 @@ function renderMatchCard(m, toSave) {
       ${favoritoTag}
     </div>
     ${renderGoalsLine(compId, m, homeName, awayName, melhorSinal)}
+    ${!finalizado ? `<button class="btn-bilhete" onclick="abrirBilhete(${m.id})">🎫 Ver todos os indicadores</button>` : ''}
     <div class="ref-line">
       <div class="ref-gauge"><div class="dot" style="left:${gaugePos}%"></div></div>
       <div>Árbitro: ${arbitroLabel}</div>
@@ -1208,6 +1251,99 @@ function historicoTag(teamId, indKey, period) {
   const classe = h.total < 5 ? "baixo-conf" : pct >= 60 ? "alto" : pct < 40 ? "baixo" : "";
   const aviso = h.total < 5 ? " <span class=\"flag\">poucos jogos</span>" : "";
   return `<span class="hist-tag ${classe}">${h.acertos}/${h.total} (${pct}%)</span>${aviso}`;
+}
+
+function teamGoalsAccuracy(teamId, period) {
+  // mesmo raciocinio do teamIndicatorAccuracy, mas pro total de gols (que fica
+  // salvo em colunas proprias -- goals_linha/goals_prob_over -- em vez de vir
+  // do padrao esc_/card_/chutes_* usado pelos outros 4 indicadores)
+  let acertos = 0, total = 0;
+  for (const m of DB.matches) {
+    if (!estaFinalizado(m)) continue;
+    if (m.home_team_id !== teamId && m.away_team_id !== teamId) continue;
+    const snap = DB.snapshotMap.get(`${m.id}|${period}`);
+    if (!snap || snap.goals_linha == null || snap.goals_prob_over == null) continue;
+    if (m.gols_mandante == null || m.gols_visitante == null) continue;
+    const realVal = m.gols_mandante + m.gols_visitante;
+    const favoritoOver = snap.goals_prob_over >= 0.5;
+    const bateu = favoritoOver ? realVal > snap.goals_linha : realVal < snap.goals_linha;
+    total++;
+    if (bateu) acertos++;
+  }
+  return { acertos, total };
+}
+
+// ---- Bilhete de aposta sugerida (resumo de todos os indicadores de um jogo) ----
+function montarBilhete(matchId) {
+  const m = DB.matches.find(x => x.id === matchId);
+  if (!m) return "";
+  const compId = m.competition_id;
+  const homeName = DB.teamNome.get(m.home_team_id)?.nome ?? "?";
+  const awayName = DB.teamNome.get(m.away_team_id)?.nome ?? "?";
+
+  const pFT = projecao(compId, m.home_team_id, m.away_team_id, "ALL", m.arbitro_id);
+  const p1T = projecao(compId, m.home_team_id, m.away_team_id, "1ST", m.arbitro_id);
+  const cFT = projecaoChutes(compId, m.home_team_id, m.away_team_id, "ALL");
+  const c1T = projecaoChutes(compId, m.home_team_id, m.away_team_id, "1ST");
+  const gFT = projecaoGols(compId, m.home_team_id, m.away_team_id, "ALL");
+
+  const esc1T = Math.min(p1T.escTotal, pFT.escTotal);
+  const card1T = Math.min(p1T.cardTotal, pFT.cardTotal);
+  const chutesTotalFT = (cFT.chutesTotalHome ?? 0) + (cFT.chutesTotalAway ?? 0);
+  const chutesTotal1T = Math.min((c1T.chutesTotalHome ?? 0) + (c1T.chutesTotalAway ?? 0), chutesTotalFT);
+  const chutesGolFT = (cFT.chutesGolHome ?? 0) + (cFT.chutesGolAway ?? 0);
+  const chutesGol1T = Math.min((c1T.chutesGolHome ?? 0) + (c1T.chutesGolAway ?? 0), chutesGolFT);
+
+  const linhas = [
+    { nome: "Escanteios", periodoLabel: "1º Tempo", indKey: "esc", period: "1ST", media: esc1T, disp: DB.cornerDispMap.get(`${compId}|1ST`)?.dispersao_idx },
+    { nome: "Escanteios", periodoLabel: "Jogo Completo", indKey: "esc", period: "ALL", media: pFT.escTotal, disp: DB.cornerDispMap.get(`${compId}|ALL`)?.dispersao_idx },
+    { nome: "Cartões", periodoLabel: "1º Tempo", indKey: "card", period: "1ST", media: card1T, disp: DB.cardDispMap.get(`${compId}|1ST`)?.dispersao_idx },
+    { nome: "Cartões", periodoLabel: "Jogo Completo", indKey: "card", period: "ALL", media: pFT.cardTotal, disp: DB.cardDispMap.get(`${compId}|ALL`)?.dispersao_idx },
+    { nome: "Total de finalizações", periodoLabel: "1º Tempo", indKey: "chutes_total", period: "1ST", media: chutesTotal1T, disp: DB.shotDispMap.get(`${compId}|1ST|totalShotsOnGoal`)?.dispersao_idx },
+    { nome: "Total de finalizações", periodoLabel: "Jogo Completo", indKey: "chutes_total", period: "ALL", media: chutesTotalFT, disp: DB.shotDispMap.get(`${compId}|ALL|totalShotsOnGoal`)?.dispersao_idx },
+    { nome: "Finalizações no gol", periodoLabel: "1º Tempo", indKey: "chutes_gol", period: "1ST", media: chutesGol1T, disp: DB.shotDispMap.get(`${compId}|1ST|shotsOnGoal`)?.dispersao_idx },
+    { nome: "Finalizações no gol", periodoLabel: "Jogo Completo", indKey: "chutes_gol", period: "ALL", media: chutesGolFT, disp: DB.shotDispMap.get(`${compId}|ALL|shotsOnGoal`)?.dispersao_idx },
+    { nome: "Total de gols", periodoLabel: "Jogo Completo", indKey: "gols", period: "ALL", media: gFT.lambdaHome != null ? gFT.lambdaHome + gFT.lambdaAway : null, disp: null },
+  ];
+
+  const linhasHtml = linhas.map(l => {
+    const calc = ouCalc(l.media, l.disp);
+    if (!calc) return "";
+    const lado = calc.probOver >= 0.5 ? "over" : "under";
+    const conf = Math.round((calc.probOver >= 0.5 ? calc.probOver : 1 - calc.probOver) * 100);
+    const histHome = l.indKey === "gols" ? teamGoalsAccuracy(m.home_team_id, l.period) : teamIndicatorAccuracy(m.home_team_id, l.indKey, l.period);
+    const histAway = l.indKey === "gols" ? teamGoalsAccuracy(m.away_team_id, l.period) : teamIndicatorAccuracy(m.away_team_id, l.indKey, l.period);
+    const fmtHist = (h) => h.total === 0 ? "sem histórico" : `${h.acertos}/${h.total}`;
+    return `
+      <div class="bilhete-item">
+        <div class="bilhete-item-topo">
+          <span class="bilhete-nome">${l.nome} <span class="bilhete-periodo">(${l.periodoLabel})</span></span>
+          <span class="bilhete-linha">${lado} ${fmt(calc.linha, 1)}</span>
+          <span class="bilhete-conf">${conf}%</span>
+        </div>
+        <div class="bilhete-hist">
+          <span>🏠 ${homeName}: <b>${fmtHist(histHome)}</b></span>
+          <span>🚗 ${awayName}: <b>${fmtHist(histAway)}</b></span>
+        </div>
+      </div>`;
+  }).join("");
+
+  return `
+    <div class="bilhete-header">
+      <div class="bilhete-titulo">${homeName} <span class="vs">vs</span> ${awayName}</div>
+      <button class="bilhete-fechar" onclick="fecharBilhete()">✕</button>
+    </div>
+    <div class="bilhete-lista">${linhasHtml}</div>
+    <div class="bilhete-rodape">Confiança = distância de 50%. Histórico = acertos/jogos passados desse time nesse indicador especifico. Ordenado por linha; compare confiança e histórico juntos antes de decidir.</div>`;
+}
+
+function abrirBilhete(matchId) {
+  document.getElementById("bilheteModalBody").innerHTML = montarBilhete(matchId);
+  document.getElementById("bilheteModal").style.display = "flex";
+}
+
+function fecharBilhete() {
+  document.getElementById("bilheteModal").style.display = "none";
 }
 
 function render() {
