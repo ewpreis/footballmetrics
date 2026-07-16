@@ -217,7 +217,7 @@
   <div id="content" class="loading">Carregando…</div>
 
   <div style="text-align:center; font-size:10px; color:var(--muted); margin-top:30px; opacity:0.6;">
-    build 2026-07-08-v18 · histórico por time embutido em cada indicador (substitui os painéis) · over/under · Elo
+    build 2026-07-08-v19 · over/under de total de gols · histórico por time · Elo
   </div>
 
 </div>
@@ -233,6 +233,38 @@ const COMPETICOES = [
   { slug: "copa-2026", label: "Copa do Mundo 2026" },
   { slug: "uefa-champions-league", label: "Champions League" },
   { slug: "uefa-conference-league", label: "Conference League" },
+  { slug: "libertadores", label: "Libertadores" },
+  { slug: "copa-do-brasil", label: "Copa do Brasil" },
+  { slug: "premier-league", label: "Premier League" },
+  { slug: "championship", label: "Championship" },
+  { slug: "fa-cup", label: "FA Cup" },
+  { slug: "efl-cup", label: "EFL Cup" },
+  { slug: "la-liga", label: "LaLiga" },
+  { slug: "segunda-division", label: "Segunda División" },
+  { slug: "copa-del-rey", label: "Copa del Rey" },
+  { slug: "bundesliga", label: "Bundesliga" },
+  { slug: "2-bundesliga", label: "2. Bundesliga" },
+  { slug: "dfb-pokal", label: "DFB Pokal" },
+  { slug: "serie-a-italia", label: "Serie A (Itália)" },
+  { slug: "coppa-italia", label: "Coppa Italia" },
+  { slug: "ligue-1", label: "Ligue 1" },
+  { slug: "coupe-de-france", label: "Coupe de France" },
+  { slug: "liga-portugal", label: "Liga Portugal" },
+  { slug: "taca-de-portugal", label: "Taça de Portugal" },
+  { slug: "eredivisie", label: "Eredivisie" },
+  { slug: "eerste-divisie", label: "Eerste Divisie" },
+  { slug: "knvb-beker", label: "KNVB Beker" },
+  { slug: "liga-profesional-argentina", label: "Liga Profesional (ARG)" },
+  { slug: "copa-argentina", label: "Copa Argentina" },
+  { slug: "mls", label: "MLS" },
+  { slug: "belgian-pro-league", label: "Pro League (BEL)" },
+  { slug: "belgian-cup", label: "Belgian Cup" },
+  { slug: "super-lig", label: "Süper Lig" },
+  { slug: "turkiye-kupasi", label: "Türkiye Kupası" },
+  { slug: "super-league-grecia", label: "Super League (GRE)" },
+  { slug: "greek-cup", label: "Greek Cup" },
+  { slug: "scottish-premiership", label: "Scottish Premiership" },
+  { slug: "scottish-cup", label: "Scottish Cup" },
 ];
 
 let DB = null; // tudo carregado uma vez; filtros so recortam localmente
@@ -850,12 +882,18 @@ function renderGoalsLine(compId, m, homeName, awayName) {
     const pc = pct(g.pCasa), pe = pct(g.pEmpate), pf = pct(g.pFora);
     const fav = favoritoResultado(g);
     const favLabel = fav === "casa" ? homeName : fav === "fora" ? awayName : "Empate";
+
+    // total de gols = soma de duas Poisson independentes = Poisson(lambdaHome+lambdaAway)
+    const totalGols = g.lambdaHome + g.lambdaAway;
+    const golsTag = ouTag(totalGols, null);
+
     return `
     <div class="goals-line">
       <div class="goals-top">
-        <span>λ gols: <span class="goals-lambda">${fmt(g.lambdaHome)} × ${fmt(g.lambdaAway)}</span></span>
+        <span>λ gols: <span class="goals-lambda">${fmt(g.lambdaHome)} × ${fmt(g.lambdaAway)}</span> <span class="goals-lambda">(total ${fmt(totalGols)})</span></span>
         <span>Placar mais provável: <span class="goals-placar">${g.placarProvavel}</span></span>
       </div>
+      ${golsTag}
       <div class="prob-bar-1x2">
         <div class="seg casa" style="width:${pc}%"></div>
         <div class="seg empate" style="width:${pe}%"></div>
@@ -877,12 +915,18 @@ function renderGoalsLine(compId, m, homeName, awayName) {
   const fav = favoritoResultado({ pCasa: snap.prob_casa, pEmpate: snap.prob_empate, pFora: snap.prob_fora });
   const favLabel = fav === "casa" ? homeName : fav === "fora" ? awayName : "Empate";
   const bateu = fav === real;
+
+  const golsRealTotal = (m.gols_mandante != null && m.gols_visitante != null) ? m.gols_mandante + m.gols_visitante : null;
+  const bGols = (snap.goals_linha != null && snap.goals_prob_over != null && golsRealTotal != null)
+    ? badgeOverUnder(golsRealTotal, snap.goals_linha, snap.goals_prob_over) : null;
+
   return `
     <div class="goals-line">
       <div class="prob-labels">
         <span>Previsto: <span class="fav">${favLabel}</span> (${pct(snap.prob_casa)}/${pct(snap.prob_empate)}/${pct(snap.prob_fora)})</span>
         <span>${bateu ? '<span class="icon ok">✓ favorito bateu</span>' : '<span class="icon no">✗ favorito não bateu</span>'}</span>
       </div>
+      ${bGols ? `<div class="prob-labels"><span>Total de gols: <b>${golsRealTotal}</b></span><span>${bGols.icon} ${bGols.texto}</span></div>` : ''}
     </div>`;
 }
 
@@ -926,6 +970,9 @@ function renderMatchCard(m, toSave) {
     const ouChutesTotal1T = ouCalc(chutesTotal1T, DB.shotDispMap.get(`${compId}|1ST|totalShotsOnGoal`)?.dispersao_idx);
     const ouChutesGolFT = ouCalc(chutesGolFT, DB.shotDispMap.get(`${compId}|ALL|shotsOnGoal`)?.dispersao_idx);
     const ouChutesGol1T = ouCalc(chutesGol1T, DB.shotDispMap.get(`${compId}|1ST|shotsOnGoal`)?.dispersao_idx);
+    // gols: soma de duas Poisson independentes = Poisson(lambdaHome+lambdaAway) -- sem overdispersao
+    const ouGolsFT = ouCalc(gFT.lambdaHome != null ? gFT.lambdaHome + gFT.lambdaAway : null, null);
+    const ouGols1T = ouCalc(g1T.lambdaHome != null ? g1T.lambdaHome + g1T.lambdaAway : null, null);
 
     toSave.push({
       match_id: m.id, period: "ALL", esc_home: pFT.escHome, esc_away: pFT.escAway,
@@ -938,6 +985,7 @@ function renderMatchCard(m, toSave) {
       card_linha: ouCardFT?.linha, card_prob_over: ouCardFT?.probOver,
       chutes_total_linha: ouChutesTotalFT?.linha, chutes_total_prob_over: ouChutesTotalFT?.probOver,
       chutes_gol_linha: ouChutesGolFT?.linha, chutes_gol_prob_over: ouChutesGolFT?.probOver,
+      goals_linha: ouGolsFT?.linha, goals_prob_over: ouGolsFT?.probOver,
       computed_at: new Date().toISOString(),
     });
     toSave.push({
@@ -949,6 +997,7 @@ function renderMatchCard(m, toSave) {
       prob_casa: g1T.pCasa, prob_empate: g1T.pEmpate, prob_fora: g1T.pFora,
       esc_linha: ouEsc1T?.linha, esc_prob_over: ouEsc1T?.probOver,
       card_linha: ouCard1T?.linha, card_prob_over: ouCard1T?.probOver,
+      goals_linha: ouGols1T?.linha, goals_prob_over: ouGols1T?.probOver,
       chutes_total_linha: ouChutesTotal1T?.linha, chutes_total_prob_over: ouChutesTotal1T?.probOver,
       chutes_gol_linha: ouChutesGol1T?.linha, chutes_gol_prob_over: ouChutesGol1T?.probOver,
       computed_at: new Date().toISOString(),
