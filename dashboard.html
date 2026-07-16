@@ -158,6 +158,12 @@
   .stat-value{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:14px; text-align:right; }
   .stat-split{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted); margin-left:6px; font-weight:400; }
   .ou-tag{ font-size:10px; color:var(--muted); font-weight:400; margin-top:2px; }
+  .melhor-sinal{
+    background:rgba(212,169,74,0.12); border:1px solid var(--gold); border-radius:6px;
+    padding:8px 12px; margin-bottom:12px; font-size:12px; color:var(--text);
+  }
+  .destaque-sinal{ background:rgba(212,169,74,0.08); border-radius:4px; margin:0 -8px; padding:5px 8px !important; }
+  .destaque-sinal .stat-name{ color:var(--gold); font-weight:600; }
   .hist-tag{
     font-size:10px; font-family:'IBM Plex Mono', monospace; font-weight:600;
     color:var(--muted); border:1px solid var(--line); border-radius:3px; padding:0px 4px;
@@ -217,7 +223,7 @@
   <div id="content" class="loading">Carregando…</div>
 
   <div style="text-align:center; font-size:10px; color:var(--muted); margin-top:30px; opacity:0.6;">
-    build 2026-07-08-v19 · over/under de total de gols · histórico por time · Elo
+    build 2026-07-08-v20 · sinal mais forte do jogo (🔥) · over/under de gols · histórico por time · Elo
   </div>
 
 </div>
@@ -795,7 +801,7 @@ function badgeOverUnder(real, linha, probOver) {
   };
 }
 
-function periodBox(label, compId, m, period) {
+function periodBox(label, compId, m, period, melhorSinal) {
   const finalizado = estaFinalizado(m);
   if (!finalizado) {
     const p = projecao(compId, m.home_team_id, m.away_team_id, period, m.arbitro_id);
@@ -828,8 +834,9 @@ function periodBox(label, compId, m, period) {
     const dispChutesGol = DB.shotDispMap.get(`${compId}|${period}|shotsOnGoal`)?.dispersao_idx;
 
     function statRow(nome, indKey, total, home, away, dispIdx) {
+      const ehMelhor = melhorSinal && melhorSinal.period === period && melhorSinal.indKey === indKey;
       return `
-        <div class="stat-row"><span class="stat-name">${nome}</span>
+        <div class="stat-row ${ehMelhor ? 'destaque-sinal' : ''}"><span class="stat-name">${ehMelhor ? '🔥 ' : ''}${nome}</span>
           <span class="stat-value">${fmt(total)}<span class="stat-split">(${fmt(home)} / ${fmt(away)})</span>${ouTag(total, dispIdx)}
           <div class="hist-row">🏠 ${historicoTag(m.home_team_id, indKey, period)} <span>·</span> 🚗 ${historicoTag(m.away_team_id, indKey, period)}</div>
           </span></div>`;
@@ -872,9 +879,10 @@ function periodBox(label, compId, m, period) {
     </div>`;
 }
 
-function renderGoalsLine(compId, m, homeName, awayName) {
+function renderGoalsLine(compId, m, homeName, awayName, melhorSinal) {
   const finalizado = estaFinalizado(m);
   const pct = (p) => p != null ? Math.round(p * 100) : null;
+  const ehMelhor = melhorSinal && melhorSinal.indKey === "gols";
 
   if (!finalizado) {
     const g = projecaoGols(compId, m.home_team_id, m.away_team_id, "ALL");
@@ -888,9 +896,9 @@ function renderGoalsLine(compId, m, homeName, awayName) {
     const golsTag = ouTag(totalGols, null);
 
     return `
-    <div class="goals-line">
+    <div class="goals-line ${ehMelhor ? 'destaque-sinal' : ''}">
       <div class="goals-top">
-        <span>λ gols: <span class="goals-lambda">${fmt(g.lambdaHome)} × ${fmt(g.lambdaAway)}</span> <span class="goals-lambda">(total ${fmt(totalGols)})</span></span>
+        <span>${ehMelhor ? '🔥 ' : ''}λ gols: <span class="goals-lambda">${fmt(g.lambdaHome)} × ${fmt(g.lambdaAway)}</span> <span class="goals-lambda">(total ${fmt(totalGols)})</span></span>
         <span>Placar mais provável: <span class="goals-placar">${g.placarProvavel}</span></span>
       </div>
       ${golsTag}
@@ -928,6 +936,44 @@ function renderGoalsLine(compId, m, homeName, awayName) {
       </div>
       ${bGols ? `<div class="prob-labels"><span>Total de gols: <b>${golsRealTotal}</b></span><span>${bGols.icon} ${bGols.texto}</span></div>` : ''}
     </div>`;
+}
+
+function computeMelhorSinal(compId, m) {
+  const pFT = projecao(compId, m.home_team_id, m.away_team_id, "ALL", m.arbitro_id);
+  const p1T = projecao(compId, m.home_team_id, m.away_team_id, "1ST", m.arbitro_id);
+  const cFT = projecaoChutes(compId, m.home_team_id, m.away_team_id, "ALL");
+  const c1T = projecaoChutes(compId, m.home_team_id, m.away_team_id, "1ST");
+  const gFT = projecaoGols(compId, m.home_team_id, m.away_team_id, "ALL");
+
+  // mesma trava 1T<=completo que ja aplicamos na exibicao, pra comparar valores consistentes
+  const esc1T = Math.min(p1T.escTotal, pFT.escTotal);
+  const card1T = Math.min(p1T.cardTotal, pFT.cardTotal);
+  const chutesTotalFT = (cFT.chutesTotalHome ?? 0) + (cFT.chutesTotalAway ?? 0);
+  const chutesTotal1T = Math.min((c1T.chutesTotalHome ?? 0) + (c1T.chutesTotalAway ?? 0), chutesTotalFT);
+  const chutesGolFT = (cFT.chutesGolHome ?? 0) + (cFT.chutesGolAway ?? 0);
+  const chutesGol1T = Math.min((c1T.chutesGolHome ?? 0) + (c1T.chutesGolAway ?? 0), chutesGolFT);
+
+  const candidatos = [
+    { period: "1ST", indKey: "esc", nome: "Escanteios (1º Tempo)", calc: ouCalc(esc1T, DB.cornerDispMap.get(`${compId}|1ST`)?.dispersao_idx) },
+    { period: "ALL", indKey: "esc", nome: "Escanteios (Jogo Completo)", calc: ouCalc(pFT.escTotal, DB.cornerDispMap.get(`${compId}|ALL`)?.dispersao_idx) },
+    { period: "1ST", indKey: "card", nome: "Cartões (1º Tempo)", calc: ouCalc(card1T, DB.cardDispMap.get(`${compId}|1ST`)?.dispersao_idx) },
+    { period: "ALL", indKey: "card", nome: "Cartões (Jogo Completo)", calc: ouCalc(pFT.cardTotal, DB.cardDispMap.get(`${compId}|ALL`)?.dispersao_idx) },
+    { period: "1ST", indKey: "chutes_total", nome: "Total de finalizações (1º Tempo)", calc: ouCalc(chutesTotal1T, DB.shotDispMap.get(`${compId}|1ST|totalShotsOnGoal`)?.dispersao_idx) },
+    { period: "ALL", indKey: "chutes_total", nome: "Total de finalizações (Jogo Completo)", calc: ouCalc(chutesTotalFT, DB.shotDispMap.get(`${compId}|ALL|totalShotsOnGoal`)?.dispersao_idx) },
+    { period: "1ST", indKey: "chutes_gol", nome: "Finalizações no gol (1º Tempo)", calc: ouCalc(chutesGol1T, DB.shotDispMap.get(`${compId}|1ST|shotsOnGoal`)?.dispersao_idx) },
+    { period: "ALL", indKey: "chutes_gol", nome: "Finalizações no gol (Jogo Completo)", calc: ouCalc(chutesGolFT, DB.shotDispMap.get(`${compId}|ALL|shotsOnGoal`)?.dispersao_idx) },
+    { period: "ALL", indKey: "gols", nome: "Total de gols", calc: gFT.lambdaHome != null ? ouCalc(gFT.lambdaHome + gFT.lambdaAway, null) : null },
+  ];
+
+  let melhor = null;
+  for (const c of candidatos) {
+    if (!c.calc) continue;
+    const conf = Math.max(c.calc.probOver, 1 - c.calc.probOver);
+    if (!melhor || conf > melhor.conf) {
+      melhor = { period: c.period, indKey: c.indKey, nome: c.nome, conf, linha: c.calc.linha, lado: c.calc.probOver >= 0.5 ? "over" : "under" };
+    }
+  }
+  return melhor;
 }
 
 function renderMatchCard(m, toSave) {
@@ -1020,6 +1066,8 @@ function renderMatchCard(m, toSave) {
   else if (eloDiff > 0) favoritoTag = `<span class="elo-tag casa">${homeName} favorito (+${eloDiff})</span>`;
   else favoritoTag = `<span class="elo-tag fora">${awayName} favorito (+${-eloDiff})</span>`;
 
+  const melhorSinal = finalizado ? null : computeMelhorSinal(compId, m);
+
   return `
   <div class="match-card ${finalizado ? 'encerrado' : ''}">
     <div class="match-top">
@@ -1032,13 +1080,14 @@ function renderMatchCard(m, toSave) {
       </div>
       <div class="meta"><span class="hora">${hora}</span><br>${(m.rodada != null && DB.roundRobinFasesByComp.get(compId)?.has(m.fase)) ? `Rodada ${m.rodada} · ` : ''}${m.fase ?? ''}${m.estadio ? ' · ' + m.estadio : ''}</div>
     </div>
+    ${melhorSinal ? `<div class="melhor-sinal">🔥 Sinal mais forte: <b>${melhorSinal.nome}</b> — ${melhorSinal.lado} ${fmt(melhorSinal.linha, 1)} (${Math.round(melhorSinal.conf * 100)}%)</div>` : ''}
     <div class="elo-line">
       <span class="elo-num">${Math.round(homeElo)}</span>
       <div class="elo-gauge"><div class="dot" style="left:${eloGaugePos}%"></div></div>
       <span class="elo-num">${Math.round(awayElo)}</span>
       ${favoritoTag}
     </div>
-    ${renderGoalsLine(compId, m, homeName, awayName)}
+    ${renderGoalsLine(compId, m, homeName, awayName, melhorSinal)}
     <div class="ref-line">
       <div class="ref-gauge"><div class="dot" style="left:${gaugePos}%"></div></div>
       <div>Árbitro: ${arbitroLabel}</div>
@@ -1058,8 +1107,8 @@ function renderMatchCard(m, toSave) {
       }).join("")}
     </div>
     <div class="periods">
-      ${periodBox("1º Tempo", compId, m, "1ST")}
-      ${periodBox("Jogo Completo", compId, m, "ALL")}
+      ${periodBox("1º Tempo", compId, m, "1ST", melhorSinal)}
+      ${periodBox("Jogo Completo", compId, m, "ALL", melhorSinal)}
     </div>
   </div>`;
 }
